@@ -1,10 +1,11 @@
-import React from 'react'
-import { View, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import CustomText from '../components/CustomText';
 
-function CurrncyScreen() {
+const CurrncyScreen = ({}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Currency Screen</Text>
+      <CustomText style={styles.title}>Currency Screen</CustomText>
     </View>
   );
 };
@@ -14,10 +15,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#ECF0F1',
+    padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 20,
   },
 });
-export default CurrncyScreen
+
+export default CurrncyScreen;

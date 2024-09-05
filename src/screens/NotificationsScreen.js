@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import CustomText from '../components/CustomText';
 
 const NotificationScreen = ({}) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Notifications Screen</Text>
+      <CustomText style={styles.title}>Notifications Screen</CustomText>
     </View>
   );
 };
@@ -14,10 +15,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#ECF0F1',
+    padding: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 20,
   },
 });
 
