@@ -1,11 +1,31 @@
 import React from 'react';
-import { Text, View, Button } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import HomeScreen from './src/screens/HomeScreen';
+import NotificationScreen from './src/screens/NotificationsScreen';
+import GetStartedScreen from './src/screens/GetStartedScreen';
+import BudgetScreen from './src/screens/BudgetScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import TransactionScreen from './src/screens/TransactionsScreen';
+import StatisticScreen from './src/screens/StatisticsScreen';
 
-export default function App() {
+const Stack = createStackNavigator();
+
+const App = () => {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <Text>Welcome to My App!</Text>
-      <Button title="Get Started" onPress={() => alert('Starting!')} />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Getstarted">
+        <Stack.Screen name="Get" component={GetStartedScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Notification" component={NotificationScreen} />
+        <Stack.Screen name="Budget" component={BudgetScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Transaction" component={TransactionScreen} />
+        <Stack.Screen name="Statistic" component={StatisticScreen} />
+
+      </Stack.Navigator>
+    </NavigationContainer>
   );
-}
+};
+
+export default App;
