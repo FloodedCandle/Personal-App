@@ -7,7 +7,7 @@ const GetStartedScreen = ({ navigation }) => {
       <Text style={styles.title}>Get Started</Text>
       <Button
         title="Go to Dashboard"
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('Drawer')}
       />
     </View>
   );
