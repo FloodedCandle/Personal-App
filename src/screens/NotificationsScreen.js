@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import CustomText from '../components/CustomText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -13,6 +13,7 @@ const initialNotifications = [
 
 const NotificationScreen = () => {
   const [notifications, setNotifications] = useState(initialNotifications);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleDelete = (id) => {
     setNotifications((prevNotifications) =>
@@ -36,6 +37,15 @@ const NotificationScreen = () => {
       ]
     );
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Simulate a network request or data refresh
+    setTimeout(() => {
+      setRefreshing(false);
+      // You can fetch fresh data here
+    }, 1000); // Adjust the timeout as needed
+  }, []);
 
   const renderRightActions = (id) => (
     <TouchableOpacity
@@ -71,6 +81,13 @@ const NotificationScreen = () => {
         data={notifications}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3498DB']}
+          />
+        }
       />
     </View>
   );
