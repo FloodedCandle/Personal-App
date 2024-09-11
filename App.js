@@ -12,15 +12,15 @@ const App = () => {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="GetStarted">
-          <Stack.Screen 
-            name="GetStarted" 
-            component={GetStartedScreen} 
-            options={{ headerShown: false }} 
+          <Stack.Screen
+            name="GetStarted"
+            component={GetStartedScreen}
+            options={{ headerShown: false }}
           />
-          <Stack.Screen 
-            name="Drawer" 
-            component={DrawerNavigator} 
-            options={{ headerShown: false }} 
+          <Stack.Screen
+            name="Drawer"
+            component={DrawerNavigator}
+            options={{ headerShown: false }}
           />
         </Stack.Navigator>
       </NavigationContainer>

@@ -14,39 +14,39 @@ const Drawer = createDrawerNavigator();
 const DrawerNavigator = () => {
   return (
     <Drawer.Navigator initialRouteName="Home">
-        <Drawer.Screen 
-        name="Profile" 
+      <Drawer.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>👤</Text> }}
       />
-      <Drawer.Screen 
-        name="Home" 
+      <Drawer.Screen
+        name="Home"
         component={HomeScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text> }}
       />
-      <Drawer.Screen 
-        name="Notification" 
+      <Drawer.Screen
+        name="Notification"
         component={NotificationScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>🔔</Text> }}
       />
-      <Drawer.Screen 
-        name="Budget" 
+      <Drawer.Screen
+        name="Budget"
         component={BudgetScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>💰</Text> }}
       />
-      
-      <Drawer.Screen 
-        name="Transaction" 
+
+      <Drawer.Screen
+        name="Transaction"
         component={TransactionScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>📈</Text> }}
       />
-      <Drawer.Screen 
-        name="Statistic" 
+      <Drawer.Screen
+        name="Statistic"
         component={StatisticScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>📊</Text> }}
       />
-      <Drawer.Screen 
-        name="Currency" 
+      <Drawer.Screen
+        name="Currency"
         component={CurrencyScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>💱</Text> }}
       />
