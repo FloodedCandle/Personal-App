@@ -1,11 +1,64 @@
-import React from 'react';
-import { View, TextInput, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput, Image, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText'; // Make sure CustomText is a Text component
+import { auth } from '../config/firebaseConfig'; // Import your Firebase auth instance
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const logo = require('../assets/logo.png');
 
 const LoginScreen = ({ navigation }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = () => {
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed in successfully
+        const user = userCredential.user;
+        console.log('User logged in:', user);
+        // Navigate to Home screen
+        navigation.navigate('Drawer');
+      })
+      .catch((error) => {
+        console.error('Error logging in:', error.message);
+        if (error.code === 'auth/user-not-found') {
+          Alert.alert(
+            'Account Not Found',
+            'This email is not registered. Would you like to create a new account?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Sign Up',
+                onPress: () => navigation.navigate('Signup'),
+              },
+            ]
+          );
+        } else if (error.code === 'auth/wrong-password') {
+          Alert.alert(
+            'Incorrect Password',
+            'The password you entered is incorrect. Please try again.',
+            [{ text: 'OK' }]
+          );
+        } else if (error.code === 'auth/invalid-email') {
+          Alert.alert(
+            'Invalid Email',
+            'Please enter a valid email address.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          Alert.alert(
+            'Login Error',
+            'An unexpected error occurred. Please try again later.',
+            [{ text: 'OK' }]
+          );
+        }
+      });
+  };
+
   return (
     <View style={styles.container}>
       {/* Logo */}
@@ -21,6 +74,8 @@ const LoginScreen = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        value={email}
+        onChangeText={setEmail}
       />
 
       {/* Password Input */}
@@ -30,6 +85,8 @@ const LoginScreen = ({ navigation }) => {
         secureTextEntry={true}
         autoCapitalize="none"
         autoCorrect={false}
+        value={password}
+        onChangeText={setPassword}
       />
 
       {/* Forgot Password and Signup Text on the same line */}
@@ -47,9 +104,7 @@ const LoginScreen = ({ navigation }) => {
       {/* Login Button */}
       <CustomButton
         title="Login"
-        onPress={() => {
-          // Handle login logic here
-        }}
+        onPress={handleLogin}
         buttonStyle={styles.button}
         textStyle={styles.buttonText}
       />
