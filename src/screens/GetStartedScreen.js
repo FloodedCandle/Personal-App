@@ -11,8 +11,8 @@ const GetStartedScreen = ({ navigation }) => {
       <Image source={logo} style={styles.logo} resizeMode="contain" />
       <CustomText style={styles.title}>Get Started</CustomText>
       <CustomButton
-        title="Go to Dashboard"
-        onPress={() => navigation.navigate('Drawer')}
+        title="Go to Login"  // Change button title to "Go to Login"
+        onPress={() => navigation.navigate('Login')}  // Navigate to LoginScreen
         buttonStyle={styles.button}
         textStyle={styles.buttonText}
       />
@@ -28,21 +28,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ECF0F1',
-    padding: 20, 
+    padding: 20,
   },
   logo: {
-    width: width * 0.8, 
-    height: undefined, 
+    width: width * 0.8,
+    height: undefined,
     aspectRatio: 1,
-    marginBottom: 10, 
+    marginBottom: 10,
     backgroundColor: '#2C3E50',
     borderRadius: 12,
   },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#2C3E50', 
-    marginBottom: 20, 
+    color: '#2C3E50',
+    marginBottom: 20,
   },
   button: {
     backgroundColor: '#2ECC71',

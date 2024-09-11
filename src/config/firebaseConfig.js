@@ -4,13 +4,13 @@ import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-//   apiKey: "your-api-key",
-//   authDomain: "your-auth-domain",
-//   projectId: "your-project-id",
-//   storageBucket: "your-storage-bucket",
-//   messagingSenderId: "your-messaging-sender-id",
-//   appId: "your-app-id",
-//   measurementId: "your-measurement-id"
+    apiKey: "AIzaSyBOv6VEUAvYR9A3Y-rVLCbY_zM2lDnDgsc",
+    authDomain: "budgetwavesapp.firebaseapp.com",
+    projectId: "budgetwavesapp",
+    storageBucket: "budgetwavesapp.appspot.com",
+    messagingSenderId: "56568044984",
+    appId: "1:56568044984:web:28b873cb2a1d708f4ac34d",
+    measurementId: "G-BP7GRJ64KZ"
 };
 
 
