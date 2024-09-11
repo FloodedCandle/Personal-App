@@ -1,11 +1,77 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import CustomText from '../components/CustomText';
+import { MaterialIcons } from '@expo/vector-icons';
+import { Swipeable } from 'react-native-gesture-handler';
 
-const NotificationScreen = ({}) => {
+const initialNotifications = [
+  { id: '1', title: 'Budget Alert', description: 'Your budget limit is nearing. Please review your expenses.' },
+  { id: '2', title: 'Savings Milestone', description: 'Congratulations! You’ve reached a new savings milestone.' },
+  { id: '3', title: 'Expense Update', description: 'An expense has been added to your account.' },
+  // Add more notifications as needed
+];
+
+const NotificationScreen = () => {
+  const [notifications, setNotifications] = useState(initialNotifications);
+
+  const handleDelete = (id) => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.filter((notification) => notification.id !== id)
+    );
+  };
+
+  const clearAllNotifications = () => {
+    Alert.alert(
+      'Clear All Notifications',
+      'Are you sure you want to clear all notifications?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          onPress: () => setNotifications([]),
+        },
+      ]
+    );
+  };
+
+  const renderRightActions = (id) => (
+    <TouchableOpacity
+      style={styles.deleteButton}
+      onPress={() => handleDelete(id)}
+    >
+      <MaterialIcons name="delete" size={24} color="#ffffff" />
+    </TouchableOpacity>
+  );
+
+  const renderItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={() => renderRightActions(item.id)}
+      overshootRight={false}
+    >
+      <View style={styles.notificationItem}>
+        <View style={styles.notificationContent}>
+          <CustomText style={styles.notificationTitle}>{item.title}</CustomText>
+          <CustomText style={styles.notificationDescription}>{item.description}</CustomText>
+        </View>
+      </View>
+    </Swipeable>
+  );
+
   return (
     <View style={styles.container}>
-      <CustomText style={styles.title}>Notifications Screen</CustomText>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.clearAllButton} onPress={clearAllNotifications}>
+          <CustomText style={styles.clearAllText}>Clear All</CustomText>
+        </TouchableOpacity>
+      </View>
+      <FlatList
+        data={notifications}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+      />
     </View>
   );
 };
@@ -13,16 +79,58 @@ const NotificationScreen = ({}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#ECF0F1',
     padding: 20,
   },
-  title: {
-    fontSize: 24,
+  header: {
+    alignItems: 'flex-end', // Align items to the right
+    marginBottom: 20,
+  },
+  clearAllButton: {
+    backgroundColor: '#3498DB',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  clearAllText: {
+    color: '#ECF0F1',
+    fontSize: 16,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#2C3E50',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 20,
+  },
+  notificationDescription: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginTop: 5,
+  },
+  deleteButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E74C3C',
+    width: 50,
+    height: '100%',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginLeft: 4,
   },
 });
 

@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'reac
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { LineChart, PieChart } from 'react-native-chart-kit';
+import BudgetItem from '../components/BudgetItem'; // Ensure you import the updated BudgetItem
 
 const ChartToggle = ({ chartType, setChartType }) => (
   <View style={styles.toggleContainer}>
@@ -46,24 +47,6 @@ const Chart = ({ chartType }) => (
   )
 );
 
-const BudgetItem = ({ name, amountSpent, amountTotal }) => {
-  const progress = (amountSpent / amountTotal) * 100;
-  return (
-    <View style={styles.budgetItem}>
-      <MaterialIcons name="attach-money" size={24} color="#2ECC71" />
-      <View style={styles.budgetDetails}>
-        <CustomText style={styles.budgetName}>{name}</CustomText>
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarBackground}>
-            <View style={[styles.progressBar, { width: `${progress}%` }]} />
-          </View>
-          <CustomText style={styles.progressText}>${amountSpent} / ${amountTotal}</CustomText>
-        </View>
-      </View>
-    </View>
-  );
-};
-
 const chartConfig = {
   backgroundColor: '#ECF0F1',
   backgroundGradientFrom: '#ECF0F1',
@@ -79,6 +62,12 @@ const chartConfig = {
 
 const HomeScreen = ({ navigation }) => {
   const [chartType, setChartType] = useState('pie');
+
+  const handleBudgetPress = (name) => {
+    // Handle the press action, e.g., navigate to edit screen
+    console.log(`Pressed budget: ${name}`);
+    // navigation.navigate('EditBudget', { name }); // Example of navigation
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -108,9 +97,24 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.budgetDisplayContainer}>
-        <BudgetItem name="Budget Name" amountSpent={145} amountTotal={150} />
-        <BudgetItem name="Budget Name" amountSpent={600} amountTotal={1700} />
-        <BudgetItem name="Budget Name" amountSpent={500} amountTotal={700} />
+        <BudgetItem
+          name="Budget Name"
+          amountSpent={145}
+          amountTotal={150}
+          onPress={() => handleBudgetPress('Budget Name')}
+        />
+        <BudgetItem
+          name="Budget Name"
+          amountSpent={600}
+          amountTotal={1700}
+          onPress={() => handleBudgetPress('Budget Name')}
+        />
+        <BudgetItem
+          name="Budget Name"
+          amountSpent={500}
+          amountTotal={700}
+          onPress={() => handleBudgetPress('Budget Name')}
+        />
         {/* Add more BudgetItem components here */}
       </View>
     </ScrollView>
@@ -143,7 +147,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 10,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#ECF0F1',
     borderRadius: 14,
     shadowColor: '#2C3E50',
     shadowOffset: { width: 0, height: 2 },
@@ -181,7 +185,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 20,
     padding: 10,
-    backgroundColor: '#ECF0F1',
+    backgroundColor: '#2C3E50',
     borderRadius: 8,
     shadowColor: '#2C3E50',
     shadowOffset: { width: 0, height: 2 },
@@ -192,7 +196,7 @@ const styles = StyleSheet.create({
   budgetsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2C3E50',
+    color: '#ECF0F1',
   },
   addButton: {
     backgroundColor: '#2ECC71',
@@ -201,43 +205,6 @@ const styles = StyleSheet.create({
   },
   budgetDisplayContainer: {
     marginTop: 10,
-  },
-  budgetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  budgetDetails: {
-    marginLeft: 10,
-    flex: 1,
-  },
-  budgetName: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: 'bold',
-  },
-  progressContainer: {
-    flexDirection: 'column',
-    marginTop: 5,
-  },
-  progressBarBackground: {
-    height: 10,
-    backgroundColor: '#BDC3C7', // Background color for remaining progress
-    borderRadius: 5,
-    width: '100%',
-  },
-  progressBar: {
-    height: 10,
-    backgroundColor: '#2ECC71', // Color for progress
-    borderRadius: 5,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#2C3E50',
-    marginTop: 5,
   },
 });
 
