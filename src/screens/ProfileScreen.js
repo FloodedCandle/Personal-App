@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import CustomText from '../components/CustomText';
 import { MaterialIcons } from '@expo/vector-icons';
+import { auth } from '../config/firebaseConfig'; // Import auth from Firebase config
+import { signOut } from 'firebase/auth'; // Import signOut method
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   // Sample user data
   const user = {
     name: 'John Doe',
@@ -14,6 +16,35 @@ const ProfileScreen = () => {
   // Example data; you might fetch this from an API or state management
   const totalSaved = 1500; // Total amount saved up
   const totalBudget = 3000; // Total budget
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "OK",
+          onPress: () => {
+            signOut(auth).then(() => {
+              // Sign-out successful.
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              });
+            }).catch((error) => {
+              // An error happened.
+              console.error('Logout error:', error);
+              Alert.alert('Logout Error', 'An error occurred while logging out. Please try again.');
+            });
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -37,7 +68,7 @@ const ProfileScreen = () => {
       </TouchableOpacity>
 
       <View style={styles.settingsContainer}>
-        <TouchableOpacity style={styles.settingItem}>
+        <TouchableOpacity style={styles.settingItem} onPress={handleLogout}>
           <MaterialIcons name="logout" size={24} color="#E74C3C" />
           <CustomText style={styles.settingText}>Logout</CustomText>
         </TouchableOpacity>
