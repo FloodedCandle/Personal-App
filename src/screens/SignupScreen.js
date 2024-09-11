@@ -1,9 +1,31 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import CustomButton from '../components/CustomButton';
-import CustomText from '../components/CustomText'; // Assuming this is your text component
+import CustomText from '../components/CustomText';
+import { auth } from '../config/firebaseConfig'; // Import your Firebase auth instance
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 const SignupScreen = ({ navigation }) => {
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSignUp = () => {
+    createUserWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        // Signed up successfully
+        const user = userCredential.user;
+        console.log('User signed up:', user);
+        // Navigate to Login screen
+        navigation.navigate('Login');
+      })
+      .catch((error) => {
+        // Error occurred
+        console.error('Error signing up:', error.message);
+        // Handle error appropriately
+      });
+  };
+
   return (
     <View style={styles.container}>
       {/* Google and Facebook Sign-In Buttons */}
@@ -35,12 +57,16 @@ const SignupScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Username"
+        value={username}
+        onChangeText={(text) => setUsername(text)}
         autoCapitalize="none"
         autoCorrect={false}
       />
       <TextInput
         style={styles.input}
         placeholder="Email"
+        value={email}
+        onChangeText={(text) => setEmail(text)}
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
@@ -48,6 +74,8 @@ const SignupScreen = ({ navigation }) => {
       <TextInput
         style={styles.input}
         placeholder="Password"
+        value={password}
+        onChangeText={(text) => setPassword(text)}
         secureTextEntry={true}
         autoCapitalize="none"
         autoCorrect={false}
@@ -63,9 +91,7 @@ const SignupScreen = ({ navigation }) => {
       {/* Signup Button */}
       <CustomButton
         title="Sign Up"
-        onPress={() => {
-          // Handle sign up logic here
-        }}
+        onPress={handleSignUp}
         buttonStyle={styles.signupButton}
         textStyle={styles.signupButtonText}
       />
