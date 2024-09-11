@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView, FlatList } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { LineChart, PieChart } from 'react-native-chart-kit';
-import BudgetItem from '../components/BudgetItem'; // Ensure you import the updated BudgetItem
+import BudgetItem from '../components/BudgetItem';
+import { db, auth } from '../config/firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const ChartToggle = ({ chartType, setChartType }) => (
   <View style={styles.toggleContainer}>
@@ -62,12 +64,41 @@ const chartConfig = {
 
 const HomeScreen = ({ navigation }) => {
   const [chartType, setChartType] = useState('pie');
+  const [budgets, setBudgets] = useState([]);
 
-  const handleBudgetPress = (name) => {
-    // Handle the press action, e.g., navigate to edit screen
-    console.log(`Pressed budget: ${name}`);
-    // navigation.navigate('EditBudget', { name }); // Example of navigation
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBudgets();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const fetchBudgets = async () => {
+    try {
+      const userId = auth.currentUser.uid;
+      const q = query(collection(db, 'budgets'), where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      const budgetList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setBudgets(budgetList);
+    } catch (error) {
+      console.error('Error fetching budgets: ', error);
+    }
   };
+
+  const handleBudgetPress = (budgetId) => {
+    navigation.navigate('BudgetDetail', { budgetId });
+  };
+
+  const renderBudgetItem = ({ item }) => (
+    <BudgetItem
+      name={item.name}
+      amountSpent={item.amountSpent || 0}
+      amountTotal={item.goal}
+      icon={item.icon}
+      onPress={() => handleBudgetPress(item.id)}
+    />
+  );
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -91,32 +122,19 @@ const HomeScreen = ({ navigation }) => {
 
       <View style={styles.budgetsContainer}>
         <CustomText style={styles.budgetsTitle}>Budgets</CustomText>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateBudget')}>
           <MaterialIcons name="add" size={24} color="#ECF0F1" />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.budgetDisplayContainer}>
-        <BudgetItem
-          name="Budget Name"
-          amountSpent={145}
-          amountTotal={150}
-          onPress={() => handleBudgetPress('Budget Name')}
-        />
-        <BudgetItem
-          name="Budget Name"
-          amountSpent={600}
-          amountTotal={1700}
-          onPress={() => handleBudgetPress('Budget Name')}
-        />
-        <BudgetItem
-          name="Budget Name"
-          amountSpent={500}
-          amountTotal={700}
-          onPress={() => handleBudgetPress('Budget Name')}
-        />
-        {/* Add more BudgetItem components here */}
-      </View>
+      <FlatList
+        data={budgets}
+        renderItem={renderBudgetItem}
+        keyExtractor={(item) => item.id}
+        style={styles.budgetList}
+        contentContainerStyle={styles.budgetListContent}
+        ItemSeparatorComponent={() => <View style={styles.budgetSeparator} />}
+      />
     </ScrollView>
   );
 };
@@ -184,14 +202,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 20,
-    padding: 10,
+    marginBottom: 10,
+    paddingHorizontal: 15,
     backgroundColor: '#2C3E50',
     borderRadius: 8,
-    shadowColor: '#2C3E50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    height: 50,
   },
   budgetsTitle: {
     fontSize: 18,
@@ -203,8 +218,16 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
-  budgetDisplayContainer: {
-    marginTop: 10,
+  budgetList: {
+    flex: 1,
+    width: '100%',
+  },
+  budgetListContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
+  },
+  budgetSeparator: {
+    height: 10,
   },
 });
 

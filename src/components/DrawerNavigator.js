@@ -8,6 +8,9 @@ import TransactionScreen from '../screens/TransactionsScreen';
 import StatisticScreen from '../screens/StatisticsScreen';
 import CurrencyScreen from '../screens/CurrncyScreen';
 import { Text } from 'react-native';
+import CreateBudgetScreen from '../screens/CreateBudgetScreen';
+import BudgetDetailScreen from '../screens/BudgetDetailScreen';
+import EditBudgetScreen from '../screens/EditBudgetScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -49,6 +52,28 @@ const DrawerNavigator = () => {
         name="Currency"
         component={CurrencyScreen}
         options={{ drawerIcon: () => <Text style={{ fontSize: 20 }}>💱</Text> }}
+      />
+      <Drawer.Screen
+        name="CreateBudget"
+        component={CreateBudgetScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+          drawerIcon: () => <Text style={{ fontSize: 20 }}>➕</Text>
+        }}
+      />
+      <Drawer.Screen
+        name="BudgetDetail"
+        component={BudgetDetailScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="EditBudget"
+        component={EditBudgetScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+        }}
       />
     </Drawer.Navigator>
   );

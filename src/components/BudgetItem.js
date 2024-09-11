@@ -1,14 +1,16 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import CustomText from '../components/CustomText';
+import CustomText from './CustomText';
 
-const BudgetItem = ({ name, amountSpent, amountTotal, onPress }) => {
+const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress }) => {
     const progress = (amountSpent / amountTotal) * 100;
 
     return (
         <TouchableOpacity style={styles.budgetItem} onPress={onPress}>
-            <MaterialIcons name="attach-money" size={24} color="#2ECC71" />
+            <View style={styles.iconContainer}>
+                <MaterialIcons name={icon} size={24} color="#2ECC71" />
+            </View>
             <View style={styles.budgetDetails}>
                 <CustomText style={styles.budgetName}>{name}</CustomText>
                 <View style={styles.progressContainer}>
@@ -26,47 +28,44 @@ const styles = StyleSheet.create({
     budgetItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
-        padding: 10,
-        backgroundColor: '#2C3E50',
+        backgroundColor: '#FFFFFF',
         borderRadius: 8,
-        shadowColor: '#2C3E50',
+        padding: 15,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    iconContainer: {
+        marginRight: 15,
     },
     budgetDetails: {
-        marginLeft: 10,
         flex: 1,
     },
     budgetName: {
         fontSize: 16,
-        color: '#ECF0F1',
         fontWeight: 'bold',
+        color: '#2C3E50',
+        marginBottom: 5,
     },
     progressContainer: {
         flexDirection: 'column',
-        marginTop: 5,
     },
     progressBarBackground: {
-        height: 10,
-        backgroundColor: '#BDC3C7', // Background color for remaining progress
-        borderRadius: 5,
-        width: '100%',
+        height: 6,
+        backgroundColor: '#EBEDEF',
+        borderRadius: 3,
+        marginBottom: 5,
     },
     progressBar: {
-        height: 10,
-        backgroundColor: '#2ECC71', // Color for progress
-        borderRadius: 5,
-        position: 'absolute',
-        left: 0,
-        top: 0,
+        height: 6,
+        backgroundColor: '#3498DB',
+        borderRadius: 3,
     },
     progressText: {
-        fontSize: 14,
-        color: '#ECF0F1',
-        marginTop: 5,
+        fontSize: 12,
+        color: '#7F8C8D',
     },
 });
 
