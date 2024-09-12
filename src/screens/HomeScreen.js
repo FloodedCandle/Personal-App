@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Dimensions, ScrollView, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { LineChart, PieChart } from 'react-native-chart-kit';
@@ -90,52 +90,68 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('BudgetDetail', { budgetId });
   };
 
-  const renderBudgetItem = ({ item }) => (
-    <BudgetItem
-      name={item.name}
-      amountSpent={item.amountSpent || 0}
-      amountTotal={item.goal}
-      icon={item.icon}
-      onPress={() => handleBudgetPress(item.id)}
-    />
-  );
+  const renderItem = ({ item }) => {
+    switch (item.type) {
+      case 'header':
+        return (
+          <View style={styles.topHeader}>
+            <CustomText style={styles.dashboardText}>Dashboard</CustomText>
+            <View style={styles.topIconsContainer}>
+              <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+                <MaterialIcons name="person-outline" size={24} color="#2C3E50" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Notification')}>
+                <Ionicons name="notifications-outline" size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      case 'chart':
+        return (
+          <View style={styles.chartContainer}>
+            <CustomText style={styles.chartTitle}>Total Overview</CustomText>
+            <ChartToggle chartType={chartType} setChartType={setChartType} />
+            <Chart chartType={chartType} />
+          </View>
+        );
+      case 'budgetHeader':
+        return (
+          <View style={styles.budgetsContainer}>
+            <CustomText style={styles.budgetsTitle}>Budgets</CustomText>
+            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateBudget')}>
+              <MaterialIcons name="add" size={24} color="#ECF0F1" />
+            </TouchableOpacity>
+          </View>
+        );
+      case 'budget':
+        return (
+          <BudgetItem
+            name={item.name}
+            amountSpent={item.amountSpent || 0}
+            amountTotal={item.goal}
+            icon={item.icon}
+            onPress={() => handleBudgetPress(item.id)}
+          />
+        );
+    }
+  };
+
+  const data = [
+    { type: 'header', id: 'header' },
+    { type: 'chart', id: 'chart' },
+    { type: 'budgetHeader', id: 'budgetHeader' },
+    ...budgets.map(budget => ({ type: 'budget', id: budget.id, ...budget }))
+  ];
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.topHeader}>
-        <CustomText style={styles.dashboardText}>Dashboard</CustomText>
-        <View style={styles.topIconsContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-            <MaterialIcons name="person-outline" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Notification')}>
-            <Ionicons name="notifications-outline" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.chartContainer}>
-        <CustomText style={styles.chartTitle}>Total Overview</CustomText>
-        <ChartToggle chartType={chartType} setChartType={setChartType} />
-        <Chart chartType={chartType} />
-      </View>
-
-      <View style={styles.budgetsContainer}>
-        <CustomText style={styles.budgetsTitle}>Budgets</CustomText>
-        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateBudget')}>
-          <MaterialIcons name="add" size={24} color="#ECF0F1" />
-        </TouchableOpacity>
-      </View>
-
+    <View style={styles.container}>
       <FlatList
-        data={budgets}
-        renderItem={renderBudgetItem}
-        keyExtractor={(item) => item.id}
-        style={styles.budgetList}
-        contentContainerStyle={styles.budgetListContent}
-        ItemSeparatorComponent={() => <View style={styles.budgetSeparator} />}
+        data={data}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
       />
-    </ScrollView>
+    </View>
   );
 };
 
@@ -228,6 +244,9 @@ const styles = StyleSheet.create({
   },
   budgetSeparator: {
     height: 10,
+  },
+  listContent: {
+    paddingBottom: 20,
   },
 });
 

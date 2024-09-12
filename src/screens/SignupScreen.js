@@ -2,28 +2,36 @@ import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
-import { auth } from '../config/firebaseConfig'; // Import your Firebase auth instance
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '../config/firebaseConfig'; // Import your Firebase auth and Firestore instances
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignUp = () => {
-    createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        // Signed up successfully
-        const user = userCredential.user;
-        console.log('User signed up:', user);
-        // Navigate to Login screen
-        navigation.navigate('Login');
-      })
-      .catch((error) => {
-        // Error occurred
-        console.error('Error signing up:', error.message);
-        // Handle error appropriately
+  const handleSignUp = async () => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update the user's profile with the username
+      await updateProfile(user, { displayName: username });
+
+      // Store additional user info in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        username: username,
+        email: email,
+        createdAt: new Date()
       });
+
+      console.log('User signed up:', user);
+      navigation.navigate('Login');
+    } catch (error) {
+      console.error('Error signing up:', error.message);
+      // Handle error appropriately
+    }
   };
 
   return (

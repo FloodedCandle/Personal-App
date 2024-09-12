@@ -1,7 +1,8 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeAuth, getReactNativePersistence, signOut, deleteUser, getAuth } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
     apiKey: "AIzaSyBOv6VEUAvYR9A3Y-rVLCbY_zM2lDnDgsc",
@@ -13,9 +14,38 @@ const firebaseConfig = {
     measurementId: "G-BP7GRJ64KZ"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const analytics = getAnalytics(app);
+let app;
+let auth;
+let db;
+let analytics = null;
 
-export { auth, db, analytics };
+if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+    });
+    db = getFirestore(app);
+
+    isSupported().then(supported => {
+        if (supported) {
+            analytics = getAnalytics(app);
+        }
+    });
+} else {
+    app = getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+}
+
+const logout = () => signOut(auth);
+const deleteAccount = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('No user logged in');
+    }
+    const uid = user.uid;
+    await deleteUser(user);
+    return uid;
+};
+
+export { auth, db, analytics, logout, deleteAccount };
