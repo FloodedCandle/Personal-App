@@ -5,8 +5,6 @@ import CustomButton from '../components/CustomButton';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const categories = [
     { name: 'Food', icon: 'restaurant' },
@@ -48,7 +46,7 @@ const CreateBudgetScreen = ({ navigation }) => {
                 icon: category.icon,
                 notificationsEnabled,
                 reminderFrequency,
-                createdAt: new Date().toISOString(), // Store as ISO string
+                createdAt: new Date().toISOString(),
             };
 
             console.log('Creating new budget:', newBudget);

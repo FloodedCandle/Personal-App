@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert, SectionList } from 'react-native';
 import CustomText from '../components/CustomText';
+import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -70,6 +71,37 @@ const BudgetScreen = () => {
     );
   };
 
+  const clearBudgets = async (type) => {
+    Alert.alert(
+      `Clear ${type} Budgets`,
+      `Are you sure you want to clear all ${type.toLowerCase()} budgets?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear",
+          onPress: async () => {
+            try {
+              const userId = auth.currentUser.uid;
+              const userBudgetsRef = doc(db, 'userBudgets', userId);
+              let updatedBudgets;
+              if (type === 'Active') {
+                updatedBudgets = budgets.completed;
+              } else if (type === 'Completed') {
+                updatedBudgets = budgets.active;
+              }
+              await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+              fetchBudgets(); // Refresh the list
+              Alert.alert('Success', `All ${type.toLowerCase()} budgets have been cleared.`);
+            } catch (error) {
+              console.error(`Error clearing ${type.toLowerCase()} budgets:`, error);
+              Alert.alert('Error', `Failed to clear ${type.toLowerCase()} budgets. Please try again.`);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderBudgetItem = ({ item }) => (
     <BudgetItem
       name={item.name}
@@ -97,6 +129,12 @@ const BudgetScreen = () => {
   const renderSectionHeader = ({ section: { title } }) => (
     <View style={styles.sectionHeader}>
       <CustomText style={styles.sectionHeaderText}>{title}</CustomText>
+      <CustomButton
+        title={`Clear ${title.split(' ')[0]}`}
+        onPress={() => clearBudgets(title.split(' ')[0])}
+        buttonStyle={styles.clearButton}
+        textStyle={styles.clearButtonText}
+      />
     </View>
   );
 
@@ -179,11 +217,23 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 5,
     borderRadius: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionHeaderText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  clearButton: {
+    backgroundColor: '#E74C3C',
+    padding: 5,
+    borderRadius: 5,
+  },
+  clearButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
   },
 });
 
