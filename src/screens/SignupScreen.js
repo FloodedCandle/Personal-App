@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
-import { auth, db } from '../config/firebaseConfig'; // Import your Firebase auth and Firestore instances
+import { auth, db } from '../config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -35,19 +35,18 @@ const SignupScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.content}
+      >
         <View style={styles.formContainer}>
           <CustomText style={styles.title}>Create Account</CustomText>
-
           <TextInput
             style={styles.input}
             placeholder="Username"
             value={username}
-            onChangeText={setUsername}
+            onChangeText={(text) => setUsername(text)}
             autoCapitalize="none"
             autoCorrect={false}
           />
@@ -55,7 +54,7 @@ const SignupScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => setEmail(text)}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -64,7 +63,7 @@ const SignupScreen = ({ navigation }) => {
             style={styles.input}
             placeholder="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => setPassword(text)}
             secureTextEntry={true}
             autoCapitalize="none"
             autoCorrect={false}
@@ -74,7 +73,7 @@ const SignupScreen = ({ navigation }) => {
             title="Sign Up"
             onPress={handleSignUp}
             buttonStyle={styles.signupButton}
-            textStyle={styles.buttonText}
+            textStyle={styles.signupButtonText}
           />
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
@@ -82,44 +81,19 @@ const SignupScreen = ({ navigation }) => {
               Already have an account? Log in
             </CustomText>
           </TouchableOpacity>
-
-          <View style={styles.separatorContainer}>
-            <View style={styles.separator} />
-            <CustomText style={styles.separatorText}>OR</CustomText>
-            <View style={styles.separator} />
-          </View>
-
-          <CustomButton
-            title="Sign up with Google"
-            onPress={() => {
-              // Handle Google sign-up logic here
-            }}
-            buttonStyle={styles.socialButton}
-            textStyle={styles.socialButtonText}
-          />
-          <CustomButton
-            title="Sign up with Facebook"
-            onPress={() => {
-              // Handle Facebook sign-up logic here
-            }}
-            buttonStyle={[styles.socialButton, styles.facebookButton]}
-            textStyle={styles.socialButtonText}
-          />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
-
-const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ECF0F1',
   },
-  scrollContainer: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     justifyContent: 'center',
   },
   formContainer: {
@@ -139,7 +113,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 30,
@@ -165,7 +139,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  buttonText: {
+  signupButtonText: {
     fontSize: 18,
     color: '#FFF',
     fontWeight: 'bold',
@@ -174,37 +148,6 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  separatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  separator: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0E0E0',
-  },
-  separatorText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    color: '#2C3E50',
-  },
-  socialButton: {
-    backgroundColor: '#DB4437',
-    width: '100%',
-    paddingVertical: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  facebookButton: {
-    backgroundColor: '#4267B2',
-  },
-  socialButtonText: {
-    fontSize: 16,
-    color: '#FFF',
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Image, StyleSheet, Dimensions, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, TextInput, Image, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText'; // Make sure CustomText is a Text component
 import { auth } from '../config/firebaseConfig'; // Import your Firebase auth instance
@@ -16,59 +16,62 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <View style={styles.logoContainer}>
-        <Image source={logo} style={styles.logo} resizeMode="contain" />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.content}
+      >
+        <View style={styles.logoContainer}>
+          <Image source={logo} style={styles.logo} resizeMode="contain" />
+        </View>
 
-      <View style={styles.formContainer}>
-        <CustomText style={styles.title}>Welcome Back</CustomText>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={email}
-          onChangeText={setEmail}
-        />
+        <View style={styles.formContainer}>
+          <CustomText style={styles.title}>Welcome Back</CustomText>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={email}
+            onChangeText={setEmail}
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          secureTextEntry={true}
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={password}
-          onChangeText={setPassword}
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            secureTextEntry={true}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        <CustomButton
-          title="Login"
-          onPress={handleLogin}
-          buttonStyle={styles.button}
-          textStyle={styles.buttonText}
-        />
+          <CustomButton
+            title="Login"
+            onPress={handleLogin}
+            buttonStyle={styles.button}
+            textStyle={styles.buttonText}
+          />
 
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-          <CustomText style={styles.signUpText}>
-            Don't have an account? Sign Up
-          </CustomText>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+            <CustomText style={styles.signUpText}>
+              Don't have an account? Sign Up
+            </CustomText>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
-
-const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ECF0F1',
+  },
+  content: {
+    flex: 1,
   },
   logoContainer: {
     flex: 1,
@@ -95,14 +98,14 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   logo: {
-    width: width * 0.4,
+    width: '40%',
     height: undefined,
     aspectRatio: 1,
     backgroundColor: '#2C3E50',
     borderRadius: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 30,
