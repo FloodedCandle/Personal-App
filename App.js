@@ -6,6 +6,8 @@ import GetStartedScreen from './src/screens/GetStartedScreen';
 import DrawerNavigator from './src/components/DrawerNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +35,16 @@ const App = () => {
             name="Drawer"
             component={DrawerNavigator}
             options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="BudgetDetail"
+            component={BudgetDetailScreen}
+            options={{ title: 'Budget Details' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

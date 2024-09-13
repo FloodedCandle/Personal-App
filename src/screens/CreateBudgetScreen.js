@@ -5,7 +5,7 @@ import CustomButton from '../components/CustomButton';
 import { TextInput } from 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { db, auth } from '../config/firebaseConfig';
-import { collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const iconOptions = [
@@ -33,8 +33,10 @@ const CreateBudgetScreen = ({ navigation }) => {
 
         try {
             const userId = auth.currentUser.uid;
-            await addDoc(collection(db, 'budgets'), {
-                userId,
+            const userBudgetsRef = doc(db, 'userBudgets', userId);
+
+            const newBudget = {
+                id: Date.now().toString(), // Generate a unique ID
                 name,
                 goal: parseFloat(goal),
                 amountSpent: 0,
@@ -44,8 +46,24 @@ const CreateBudgetScreen = ({ navigation }) => {
                 notificationEnabled,
                 icon: selectedIcon,
                 createdAt: new Date(),
-            });
+            };
 
+            // Check if the document exists
+            const docSnap = await getDoc(userBudgetsRef);
+
+            if (docSnap.exists()) {
+                // If it exists, update the array
+                await updateDoc(userBudgetsRef, {
+                    budgets: arrayUnion(newBudget)
+                });
+            } else {
+                // If it doesn't exist, create a new document with the budget array
+                await setDoc(userBudgetsRef, {
+                    budgets: [newBudget]
+                });
+            }
+
+            console.log('New budget created:', newBudget.id);
             Alert.alert('Success', 'Budget created successfully');
             navigation.navigate('Home');
         } catch (error) {

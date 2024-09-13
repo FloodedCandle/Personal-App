@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import BudgetItem from '../components/BudgetItem';
 import { db, auth } from '../config/firebaseConfig';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 const ChartToggle = ({ chartType, setChartType }) => (
   <View style={styles.toggleContainer}>
@@ -65,6 +65,31 @@ const chartConfig = {
 const HomeScreen = ({ navigation }) => {
   const [chartType, setChartType] = useState('pie');
   const [budgets, setBudgets] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchBudgets = useCallback(async () => {
+    try {
+      const userId = auth.currentUser?.uid;
+      console.log('Current user ID:', userId);
+      if (!userId) {
+        console.log('No user logged in');
+        return;
+      }
+      const userBudgetsRef = doc(db, 'userBudgets', userId);
+      const docSnap = await getDoc(userBudgetsRef);
+
+      if (docSnap.exists()) {
+        const userBudgets = docSnap.data().budgets || [];
+        setBudgets(userBudgets);
+        console.log('Fetched budgets:', userBudgets);
+      } else {
+        console.log('No budgets found for user');
+        setBudgets([]);
+      }
+    } catch (error) {
+      console.error('Error fetching budgets: ', error);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -72,22 +97,22 @@ const HomeScreen = ({ navigation }) => {
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, fetchBudgets]);
 
-  const fetchBudgets = async () => {
-    try {
-      const userId = auth.currentUser.uid;
-      const q = query(collection(db, 'budgets'), where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-      const budgetList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBudgets(budgetList);
-    } catch (error) {
-      console.error('Error fetching budgets: ', error);
-    }
-  };
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    console.log('Current user on mount:', currentUser);
+  }, []);
 
-  const handleBudgetPress = (budgetId) => {
-    navigation.navigate('BudgetDetail', { budgetId });
+  const onRefresh = useCallback(async () => {
+    console.log('Refreshing budgets...');
+    setRefreshing(true);
+    await fetchBudgets();
+    setRefreshing(false);
+  }, [fetchBudgets]);
+
+  const handleBudgetPress = (budget) => {
+    navigation.navigate('BudgetDetail', { budget });
   };
 
   const renderItem = ({ item }) => {
@@ -130,7 +155,7 @@ const HomeScreen = ({ navigation }) => {
             amountSpent={item.amountSpent || 0}
             amountTotal={item.goal}
             icon={item.icon}
-            onPress={() => handleBudgetPress(item.id)}
+            onPress={() => handleBudgetPress(item)}
           />
         );
     }
@@ -150,6 +175,19 @@ const HomeScreen = ({ navigation }) => {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2C3E50']}
+            tintColor="#2C3E50"
+          />
+        }
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <CustomText style={styles.emptyText}>No budgets found. Pull to refresh or create a new budget.</CustomText>
+          </View>
+        )}
       />
     </View>
   );
@@ -247,6 +285,17 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    textAlign: 'center',
   },
 });
 
