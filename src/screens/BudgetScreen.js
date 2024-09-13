@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert, SectionList } from 'react-native';
 import CustomText from '../components/CustomText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 
 const BudgetScreen = () => {
-  const [budgets, setBudgets] = useState([]);
+  const [budgets, setBudgets] = useState({ active: [], completed: [] });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const navigation = useNavigation();
 
@@ -29,9 +29,11 @@ const BudgetScreen = () => {
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
-        setBudgets(userBudgets);
+        const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
+        const completedBudgets = userBudgets.filter(budget => budget.amountSpent >= budget.goal);
+        setBudgets({ active: activeBudgets, completed: completedBudgets });
       } else {
-        setBudgets([]);
+        setBudgets({ active: [], completed: [] });
       }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
@@ -55,7 +57,7 @@ const BudgetScreen = () => {
             try {
               const userId = auth.currentUser.uid;
               const userBudgetsRef = doc(db, 'userBudgets', userId);
-              const updatedBudgets = budgets.filter(b => b.id !== budget.id);
+              const updatedBudgets = [...budgets.active, ...budgets.completed].filter(b => b.id !== budget.id);
               await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
               fetchBudgets(); // Refresh the list
             } catch (error) {
@@ -81,13 +83,27 @@ const BudgetScreen = () => {
   );
 
   const getCategories = () => {
-    const categorySet = new Set(budgets.map(budget => budget.category?.name || 'Uncategorized'));
+    const allBudgets = [...budgets.active, ...budgets.completed];
+    const categorySet = new Set(allBudgets.map(budget => budget.category?.name || 'Uncategorized'));
     return ['All', ...Array.from(categorySet)];
   };
 
-  const filteredBudgets = selectedCategory === 'All'
-    ? budgets
-    : budgets.filter(budget => budget.category?.name === selectedCategory);
+  const filterBudgets = (budgetList) => {
+    return selectedCategory === 'All'
+      ? budgetList
+      : budgetList.filter(budget => budget.category?.name === selectedCategory);
+  };
+
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeader}>
+      <CustomText style={styles.sectionHeaderText}>{title}</CustomText>
+    </View>
+  );
+
+  const sections = [
+    { title: 'Active Budgets', data: filterBudgets(budgets.active) },
+    { title: 'Completed Budgets', data: filterBudgets(budgets.completed) },
+  ];
 
   return (
     <View style={styles.container}>
@@ -103,9 +119,10 @@ const BudgetScreen = () => {
           ))}
         </Picker>
       </View>
-      <FlatList
-        data={filteredBudgets}
+      <SectionList
+        sections={sections}
         renderItem={renderBudgetItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={<CustomText style={styles.emptyText}>No budgets found. Create a new budget to get started!</CustomText>}
       />
@@ -155,6 +172,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
+  },
+  sectionHeader: {
+    backgroundColor: '#34495E',
+    padding: 10,
+    marginTop: 10,
+    marginBottom: 5,
+    borderRadius: 5,
+  },
+  sectionHeaderText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 

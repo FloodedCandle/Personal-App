@@ -83,9 +83,10 @@ const HomeScreen = ({ navigation }) => {
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
-        console.log('Fetched budgets:', userBudgets);
-        setBudgets(userBudgets);
-        processCategoryData(userBudgets);
+        const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
+        console.log('Fetched budgets:', activeBudgets);
+        setBudgets(activeBudgets);
+        processCategoryData(activeBudgets);
       } else {
         console.log('No budgets found');
         setBudgets([]);

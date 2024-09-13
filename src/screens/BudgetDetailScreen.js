@@ -72,13 +72,16 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                 await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
                 await addTransaction(budget.name, fundAmount);
 
-                if (newTotalSpent === budget.goal) {
-                    addNotification(budget.name);
+                if (newTotalSpent >= budget.goal) {
+                    await addNotification(budget.name);
+                    Alert.alert('Budget Goal Reached', `Congratulations! You've reached your goal for "${budget.name}"`, [
+                        { text: 'OK', onPress: () => navigation.navigate('Home') }
+                    ]);
+                } else {
+                    Alert.alert('Success', 'Funds added successfully');
+                    setAmount('');
+                    fetchBudgetDetails();
                 }
-
-                Alert.alert('Success', 'Funds added successfully');
-                setAmount('');
-                fetchBudgetDetails();
             }
         } catch (error) {
             console.error('Error adding funds:', error);
@@ -91,13 +94,27 @@ const BudgetDetailScreen = ({ route, navigation }) => {
     const addNotification = async (budgetName) => {
         const userId = auth.currentUser.uid;
         const notificationsRef = doc(db, 'notifications', userId);
-        await setDoc(notificationsRef, {
-            notifications: arrayUnion({
-                id: Date.now().toString(),
-                message: `Budget "${budgetName}" has been completed!`,
-                createdAt: new Date()
-            })
-        }, { merge: true });
+        const newNotification = {
+            id: Date.now().toString(),
+            message: `Budget "${budgetName}" has been completed!`,
+            createdAt: new Date()
+        };
+
+        try {
+            const docSnap = await getDoc(notificationsRef);
+            if (docSnap.exists()) {
+                await updateDoc(notificationsRef, {
+                    notifications: arrayUnion(newNotification)
+                });
+            } else {
+                await setDoc(notificationsRef, {
+                    notifications: [newNotification]
+                });
+            }
+            console.log('Notification added successfully');
+        } catch (error) {
+            console.error('Error adding notification:', error);
+        }
     };
 
     const addTransaction = async (budgetName, amount) => {
