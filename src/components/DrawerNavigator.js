@@ -7,7 +7,7 @@ import BudgetScreen from '../screens/BudgetScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TransactionScreen from '../screens/TransactionsScreen';
 import StatisticsScreen from '../screens/StatisticsScreen';
-import CurrencyScreen from '../screens/CurrncyScreen';
+import CurrencyScreen from '../screens/CurrencyScreen';
 
 const Drawer = createDrawerNavigator();
 
