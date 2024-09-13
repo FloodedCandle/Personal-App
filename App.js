@@ -7,9 +7,10 @@ import DrawerNavigator from './src/components/DrawerNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
-import CreateBudgetScreen from './src/screens/CreateBudgetScreen'; // Add this import
+import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
+import EditBudgetScreen from './src/screens/EditBudgetScreen'; // Add this import
 import ChartThemeScreen from './src/screens/ChartThemeScreen';
-import StatisticsScreen from './src/screens/StatisticsScreen'; // Add this import
+import StatisticsScreen from './src/screens/StatisticsScreen';
 
 const Stack = createStackNavigator();
 
@@ -47,6 +48,11 @@ const App = () => {
             name="CreateBudget"
             component={CreateBudgetScreen}
             options={{ title: 'Create Budget' }}
+          />
+          <Stack.Screen
+            name="EditBudget"
+            component={EditBudgetScreen}
+            options={{ title: 'Edit Budget' }}
           />
           <Stack.Screen
             name="ChartTheme"
