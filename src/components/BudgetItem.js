@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import CustomText from './CustomText';
 
-const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress, onEdit, onDelete }) => {
+const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress }) => {
     return (
         <TouchableOpacity style={styles.budgetItem} onPress={onPress}>
             <View style={styles.iconContainer}>
@@ -20,14 +20,6 @@ const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress, onEdit, onD
                     </CustomText>
                 </View>
             </View>
-            <View style={styles.actionButtons}>
-                <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
-                    <MaterialIcons name="edit" size={24} color="#3498DB" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
-                    <MaterialIcons name="delete" size={24} color="#E74C3C" />
-                </TouchableOpacity>
-            </View>
         </TouchableOpacity>
     );
 };
@@ -39,6 +31,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 8,
         padding: 15,
+        marginBottom: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -74,12 +67,6 @@ const styles = StyleSheet.create({
     progressText: {
         fontSize: 12,
         color: '#7F8C8D',
-    },
-    actionButtons: {
-        flexDirection: 'row',
-    },
-    actionButton: {
-        padding: 5,
     },
 });
 

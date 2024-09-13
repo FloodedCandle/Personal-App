@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TextInput, Alert, TouchableOpacity } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const EditBudgetScreen = ({ route, navigation }) => {
     const { budget } = route.params;
@@ -39,30 +40,43 @@ const EditBudgetScreen = ({ route, navigation }) => {
 
     return (
         <ScrollView style={styles.container}>
-            <View style={styles.inputContainer}>
-                <CustomText style={styles.label}>Budget Name</CustomText>
-                <TextInput
-                    style={styles.input}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter budget name"
+            <View style={styles.header}>
+                <MaterialIcons name={budget.icon} size={50} color="#FFFFFF" />
+                <CustomText style={styles.title}>Edit Budget</CustomText>
+            </View>
+
+            <View style={styles.card}>
+                <View style={styles.inputContainer}>
+                    <CustomText style={styles.label}>Budget Name</CustomText>
+                    <TextInput
+                        style={styles.input}
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="Enter budget name"
+                    />
+                </View>
+
+                <View style={styles.inputContainer}>
+                    <CustomText style={styles.label}>Budget Goal</CustomText>
+                    <TextInput
+                        style={styles.input}
+                        value={goal}
+                        onChangeText={setGoal}
+                        placeholder="Enter budget goal"
+                        keyboardType="numeric"
+                    />
+                </View>
+
+                <CustomButton
+                    title="Save Changes"
+                    onPress={handleSave}
+                    buttonStyle={styles.saveButton}
                 />
             </View>
-            <View style={styles.inputContainer}>
-                <CustomText style={styles.label}>Budget Goal</CustomText>
-                <TextInput
-                    style={styles.input}
-                    value={goal}
-                    onChangeText={setGoal}
-                    placeholder="Enter budget goal"
-                    keyboardType="numeric"
-                />
-            </View>
-            <CustomButton
-                title="Save Changes"
-                onPress={handleSave}
-                buttonStyle={styles.saveButton}
-            />
+
+            <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+                <CustomText style={styles.cancelButtonText}>Cancel</CustomText>
+            </TouchableOpacity>
         </ScrollView>
     );
 };
@@ -70,20 +84,45 @@ const EditBudgetScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ECF0F1',
+        backgroundColor: '#F0F0F0',
+    },
+    header: {
+        alignItems: 'center',
         padding: 20,
+        backgroundColor: '#3498DB',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        marginTop: 10,
+    },
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        padding: 20,
+        margin: 10,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.23,
+        shadowRadius: 2.62,
+        elevation: 4,
     },
     inputContainer: {
         marginBottom: 20,
     },
     label: {
         fontSize: 16,
-        marginBottom: 5,
+        fontWeight: 'bold',
         color: '#2C3E50',
+        marginBottom: 5,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#3498DB',
+        borderColor: '#E0E0E0',
         borderRadius: 5,
         padding: 10,
         fontSize: 16,
@@ -91,6 +130,16 @@ const styles = StyleSheet.create({
     saveButton: {
         backgroundColor: '#2ECC71',
         marginTop: 20,
+    },
+    cancelButton: {
+        alignItems: 'center',
+        padding: 15,
+        marginTop: 10,
+    },
+    cancelButtonText: {
+        color: '#E74C3C',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 
