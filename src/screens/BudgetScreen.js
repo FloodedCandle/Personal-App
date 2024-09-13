@@ -1,79 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import CustomText from '../components/CustomText';
-import CustomButton from '../components/CustomButton';
-import { db, auth } from '../config/firebaseConfig';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
+import { db, auth } from '../config/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import BudgetItem from '../components/BudgetItem';
+import { useNavigation } from '@react-navigation/native';
 
-const BudgetScreen = ({ navigation }) => {
+const BudgetScreen = () => {
   const [budgets, setBudgets] = useState([]);
+  const navigation = useNavigation();
 
   useEffect(() => {
-    fetchBudgets();
-  }, []);
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBudgets();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const fetchBudgets = async () => {
     try {
       const userId = auth.currentUser.uid;
-      const q = query(collection(db, 'budgets'), where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-      const budgetList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setBudgets(budgetList);
+      const userBudgetsRef = doc(db, 'userBudgets', userId);
+      const docSnap = await getDoc(userBudgetsRef);
+
+      if (docSnap.exists()) {
+        const userBudgets = docSnap.data().budgets || [];
+        setBudgets(userBudgets);
+      } else {
+        setBudgets([]);
+      }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
       Alert.alert('Error', 'Failed to fetch budgets. Please try again.');
     }
   };
 
-  const handleDeleteBudget = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'budgets', id));
-      fetchBudgets(); // Refresh the list
-      Alert.alert('Success', 'Budget deleted successfully');
-    } catch (error) {
-      console.error('Error deleting budget: ', error);
-      Alert.alert('Error', 'Failed to delete budget. Please try again.');
-    }
-  };
-
   const renderBudgetItem = ({ item }) => (
-    <View style={styles.budgetItem}>
-      <CustomText style={styles.budgetName}>{item.name}</CustomText>
-      <CustomText>Goal: ${item.goal}</CustomText>
-      <CustomText>Amount Spent: ${item.amountSpent || 0}</CustomText>
-      <View style={styles.progressBarContainer}>
-        <View
-          style={[
-            styles.progressBar,
-            { width: `${((item.amountSpent || 0) / item.goal) * 100}%` },
-          ]}
-        />
-      </View>
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={() => navigation.navigate('EditBudget', { budget: item })}>
-          <MaterialIcons name="edit" size={24} color="#3498DB" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDeleteBudget(item.id)}>
-          <MaterialIcons name="delete" size={24} color="#E74C3C" />
-        </TouchableOpacity>
-      </View>
-    </View>
+    <BudgetItem
+      name={item.name}
+      amountSpent={item.amountSpent || 0}
+      amountTotal={item.goal}
+      icon={item.icon}
+      onPress={() => navigation.navigate('BudgetDetail', { budget: item })}
+    />
   );
 
   return (
     <View style={styles.container}>
-      <CustomText style={styles.title}>Your Budgets</CustomText>
-      <CustomButton
-        title="Create New Budget"
-        onPress={() => navigation.navigate('CreateBudget')}
-        buttonStyle={styles.createButton}
-      />
       <FlatList
         data={budgets}
         renderItem={renderBudgetItem}
         keyExtractor={(item) => item.id}
+        ListEmptyComponent={<CustomText style={styles.emptyText}>No budgets found. Create a new budget to get started!</CustomText>}
       />
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => navigation.navigate('CreateBudget')}
+      >
+        <MaterialIcons name="add" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 };
@@ -81,45 +68,26 @@ const BudgetScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#ECF0F1',
+    padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#2C3E50',
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#7F8C8D',
   },
-  createButton: {
-    backgroundColor: '#2ECC71',
-    marginBottom: 20,
-  },
-  budgetItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 5,
-    padding: 15,
-    marginBottom: 10,
-  },
-  budgetName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  progressBarContainer: {
-    height: 10,
-    backgroundColor: '#BDC3C7',
-    borderRadius: 5,
-    marginVertical: 10,
-  },
-  progressBar: {
-    height: 10,
+  addButton: {
+    position: 'absolute',
+    right: 30,
+    bottom: 30,
     backgroundColor: '#3498DB',
-    borderRadius: 5,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
   },
 });
 

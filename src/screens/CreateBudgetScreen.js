@@ -1,29 +1,28 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Switch, Alert, Modal, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, TextInput, Alert, Switch, TouchableOpacity } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
-import { TextInput } from 'react-native-gesture-handler';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, setDoc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const iconOptions = [
-    'attach-money', 'shopping-cart', 'home', 'directions-car', 'fastfood',
-    'local-hospital', 'school', 'flight', 'fitness-center', 'pets'
+const categories = [
+    { name: 'Food', icon: 'restaurant' },
+    { name: 'Transportation', icon: 'directions-car' },
+    { name: 'Housing', icon: 'home' },
+    { name: 'Entertainment', icon: 'movie' },
+    { name: 'Shopping', icon: 'shopping-cart' },
+    { name: 'Health', icon: 'favorite' },
+    { name: 'Education', icon: 'school' },
+    { name: 'Other', icon: 'category' },
 ];
 
 const CreateBudgetScreen = ({ navigation }) => {
     const [name, setName] = useState('');
     const [goal, setGoal] = useState('');
-    const [startDate, setStartDate] = useState(new Date());
-    const [endDate, setEndDate] = useState(new Date());
-    const [isRepeatable, setIsRepeatable] = useState(false);
-    const [notificationEnabled, setNotificationEnabled] = useState(false);
-    const [selectedIcon, setSelectedIcon] = useState('attach-money');
-    const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-    const [showEndDatePicker, setShowEndDatePicker] = useState(false);
-    const [showIconPicker, setShowIconPicker] = useState(false);
+    const [category, setCategory] = useState(categories[0]);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [reminderFrequency, setReminderFrequency] = useState('weekly');
 
     const handleCreateBudget = async () => {
         if (!name || !goal) {
@@ -36,36 +35,30 @@ const CreateBudgetScreen = ({ navigation }) => {
             const userBudgetsRef = doc(db, 'userBudgets', userId);
 
             const newBudget = {
-                id: Date.now().toString(), // Generate a unique ID
+                id: Date.now().toString(),
                 name,
                 goal: parseFloat(goal),
                 amountSpent: 0,
-                startDate,
-                endDate,
-                isRepeatable,
-                notificationEnabled,
-                icon: selectedIcon,
+                category: category.name,
+                icon: category.icon,
+                notificationsEnabled,
+                reminderFrequency,
                 createdAt: new Date(),
             };
 
-            // Check if the document exists
             const docSnap = await getDoc(userBudgetsRef);
-
             if (docSnap.exists()) {
-                // If it exists, update the array
                 await updateDoc(userBudgetsRef, {
                     budgets: arrayUnion(newBudget)
                 });
             } else {
-                // If it doesn't exist, create a new document with the budget array
-                await setDoc(userBudgetsRef, {
+                await updateDoc(userBudgetsRef, {
                     budgets: [newBudget]
                 });
             }
 
-            console.log('New budget created:', newBudget.id);
             Alert.alert('Success', 'Budget created successfully');
-            navigation.navigate('Home');
+            navigation.goBack();
         } catch (error) {
             console.error('Error creating budget: ', error);
             Alert.alert('Error', 'Failed to create budget. Please try again.');
@@ -74,112 +67,89 @@ const CreateBudgetScreen = ({ navigation }) => {
 
     return (
         <ScrollView style={styles.container}>
-            <CustomText style={styles.title}>Create New Budget</CustomText>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Budget Name"
-                value={name}
-                onChangeText={setName}
-            />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Budget Goal"
-                value={goal}
-                onChangeText={setGoal}
-                keyboardType="numeric"
-            />
-
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowStartDatePicker(true)}>
-                <CustomText>Start Date: {startDate.toDateString()}</CustomText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowEndDatePicker(true)}>
-                <CustomText>End Date: {endDate.toDateString()}</CustomText>
-            </TouchableOpacity>
-
-            <View style={styles.switchContainer}>
-                <CustomText>Repeatable:</CustomText>
-                <Switch
-                    value={isRepeatable}
-                    onValueChange={setIsRepeatable}
+            <View style={styles.inputContainer}>
+                <CustomText style={styles.label}>Budget Name</CustomText>
+                <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter budget name"
                 />
             </View>
 
-            <View style={styles.switchContainer}>
-                <CustomText>Enable Notifications:</CustomText>
-                <Switch
-                    value={notificationEnabled}
-                    onValueChange={setNotificationEnabled}
+            <View style={styles.inputContainer}>
+                <CustomText style={styles.label}>Budget Goal</CustomText>
+                <TextInput
+                    style={styles.input}
+                    value={goal}
+                    onChangeText={setGoal}
+                    placeholder="Enter budget goal"
+                    keyboardType="numeric"
                 />
             </View>
 
-            <TouchableOpacity style={styles.iconButton} onPress={() => setShowIconPicker(true)}>
-                <MaterialIcons name={selectedIcon} size={24} color="#2C3E50" />
-                <CustomText style={styles.iconButtonText}>Select Icon</CustomText>
-            </TouchableOpacity>
+            <View style={styles.inputContainer}>
+                <CustomText style={styles.label}>Category</CustomText>
+                <View style={styles.categoryContainer}>
+                    {categories.map((cat) => (
+                        <TouchableOpacity
+                            key={cat.name}
+                            style={[
+                                styles.categoryItem,
+                                category.name === cat.name && styles.selectedCategory,
+                            ]}
+                            onPress={() => setCategory(cat)}
+                        >
+                            <MaterialIcons name={cat.icon} size={24} color={category.name === cat.name ? '#FFFFFF' : '#2C3E50'} />
+                            <CustomText style={[
+                                styles.categoryText,
+                                category.name === cat.name && styles.selectedCategoryText,
+                            ]}>
+                                {cat.name}
+                            </CustomText>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+                <CustomText style={styles.label}>Enable Notifications</CustomText>
+                <Switch
+                    value={notificationsEnabled}
+                    onValueChange={setNotificationsEnabled}
+                />
+            </View>
+
+            {notificationsEnabled && (
+                <View style={styles.inputContainer}>
+                    <CustomText style={styles.label}>Reminder Frequency</CustomText>
+                    <View style={styles.frequencyContainer}>
+                        {['daily', 'weekly', 'monthly'].map((freq) => (
+                            <TouchableOpacity
+                                key={freq}
+                                style={[
+                                    styles.frequencyItem,
+                                    reminderFrequency === freq && styles.selectedFrequency,
+                                ]}
+                                onPress={() => setReminderFrequency(freq)}
+                            >
+                                <CustomText style={[
+                                    styles.frequencyText,
+                                    reminderFrequency === freq && styles.selectedFrequencyText,
+                                ]}>
+                                    {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                                </CustomText>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            )}
 
             <CustomButton
                 title="Create Budget"
                 onPress={handleCreateBudget}
                 buttonStyle={styles.createButton}
             />
-
-            {showStartDatePicker && (
-                <DateTimePicker
-                    value={startDate}
-                    mode="date"
-                    display="default"
-                    onChange={(event, selectedDate) => {
-                        setShowStartDatePicker(false);
-                        if (selectedDate) setStartDate(selectedDate);
-                    }}
-                />
-            )}
-
-            {showEndDatePicker && (
-                <DateTimePicker
-                    value={endDate}
-                    mode="date"
-                    display="default"
-                    onChange={(event, selectedDate) => {
-                        setShowEndDatePicker(false);
-                        if (selectedDate) setEndDate(selectedDate);
-                    }}
-                />
-            )}
-
-            <Modal
-                visible={showIconPicker}
-                transparent={true}
-                animationType="slide"
-            >
-                <View style={styles.modalContainer}>
-                    <View style={styles.modalContent}>
-                        <CustomText style={styles.modalTitle}>Select an Icon</CustomText>
-                        <View style={styles.iconGrid}>
-                            {iconOptions.map((icon) => (
-                                <TouchableOpacity
-                                    key={icon}
-                                    style={styles.iconOption}
-                                    onPress={() => {
-                                        setSelectedIcon(icon);
-                                        setShowIconPicker(false);
-                                    }}
-                                >
-                                    <MaterialIcons name={icon} size={30} color="#2C3E50" />
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <CustomButton
-                            title="Cancel"
-                            onPress={() => setShowIconPicker(false)}
-                            buttonStyle={styles.cancelButton}
-                        />
-                    </View>
-                </View>
-            </Modal>
         </ScrollView>
     );
 };
@@ -187,76 +157,71 @@ const CreateBudgetScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
         backgroundColor: '#ECF0F1',
+        padding: 20,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+    inputContainer: {
         marginBottom: 20,
+    },
+    label: {
+        fontSize: 16,
+        marginBottom: 5,
         color: '#2C3E50',
     },
     input: {
-        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#3498DB',
         borderRadius: 5,
         padding: 10,
-        marginBottom: 15,
+        fontSize: 16,
     },
-    dateButton: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 5,
-        padding: 10,
-        marginBottom: 15,
-    },
-    switchContainer: {
+    categoryContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
-        marginBottom: 15,
     },
-    iconButton: {
+    categoryItem: {
+        width: '48%',
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 5,
         padding: 10,
-        marginBottom: 15,
+        borderRadius: 5,
+        marginBottom: 10,
     },
-    iconButtonText: {
+    selectedCategory: {
+        backgroundColor: '#3498DB',
+    },
+    categoryText: {
         marginLeft: 10,
+        color: '#2C3E50',
+    },
+    selectedCategoryText: {
+        color: '#FFFFFF',
+    },
+    frequencyContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    frequencyItem: {
+        flex: 1,
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        padding: 10,
+        borderRadius: 5,
+        marginHorizontal: 5,
+    },
+    selectedFrequency: {
+        backgroundColor: '#3498DB',
+    },
+    frequencyText: {
+        color: '#2C3E50',
+    },
+    selectedFrequencyText: {
+        color: '#FFFFFF',
     },
     createButton: {
         backgroundColor: '#2ECC71',
-        marginTop: 20,
-    },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 10,
-        padding: 20,
-        width: '80%',
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 15,
-        textAlign: 'center',
-    },
-    iconGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-    },
-    iconOption: {
-        margin: 10,
-    },
-    cancelButton: {
-        backgroundColor: '#E74C3C',
         marginTop: 20,
     },
 });

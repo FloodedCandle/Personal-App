@@ -1,93 +1,80 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import CustomText from '../components/CustomText';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Swipeable } from 'react-native-gesture-handler';
+import { db, auth } from '../config/firebaseConfig';
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 
-const initialNotifications = [
-  { id: '1', title: 'Budget Alert', description: 'Your budget limit is nearing. Please review your expenses.' },
-  { id: '2', title: 'Savings Milestone', description: 'Congratulations! You’ve reached a new savings milestone.' },
-  { id: '3', title: 'Expense Update', description: 'An expense has been added to your account.' },
-  // Add more notifications as needed
-];
-
-const NotificationScreen = () => {
-  const [notifications, setNotifications] = useState(initialNotifications);
+const NotificationsScreen = () => {
+  const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleDelete = (id) => {
-    setNotifications((prevNotifications) =>
-      prevNotifications.filter((notification) => notification.id !== id)
-    );
+  const fetchNotifications = async () => {
+    try {
+      const userId = auth.currentUser.uid;
+      const notificationsRef = doc(db, 'notifications', userId);
+      const docSnap = await getDoc(notificationsRef);
+
+      if (docSnap.exists()) {
+        const notificationsData = docSnap.data().notifications || [];
+        setNotifications(notificationsData.sort((a, b) => b.createdAt.seconds - a.createdAt.seconds));
+      } else {
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications: ', error);
+    }
   };
 
-  const clearAllNotifications = () => {
-    Alert.alert(
-      'Clear All Notifications',
-      'Are you sure you want to clear all notifications?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'OK',
-          onPress: () => setNotifications([]),
-        },
-      ]
-    );
-  };
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    // Simulate a network request or data refresh
-    setTimeout(() => {
-      setRefreshing(false);
-      // You can fetch fresh data here
-    }, 1000); // Adjust the timeout as needed
+  useEffect(() => {
+    fetchNotifications();
   }, []);
 
-  const renderRightActions = (id) => (
-    <TouchableOpacity
-      style={styles.deleteButton}
-      onPress={() => handleDelete(id)}
-    >
-      <MaterialIcons name="delete" size={24} color="#ffffff" />
-    </TouchableOpacity>
-  );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchNotifications();
+    setRefreshing(false);
+  };
 
-  const renderItem = ({ item }) => (
-    <Swipeable
-      renderRightActions={() => renderRightActions(item.id)}
-      overshootRight={false}
-    >
-      <View style={styles.notificationItem}>
-        <View style={styles.notificationContent}>
-          <CustomText style={styles.notificationTitle}>{item.title}</CustomText>
-          <CustomText style={styles.notificationDescription}>{item.description}</CustomText>
-        </View>
-      </View>
-    </Swipeable>
+  const deleteNotification = async (notification) => {
+    try {
+      const userId = auth.currentUser.uid;
+      const notificationsRef = doc(db, 'notifications', userId);
+      await updateDoc(notificationsRef, {
+        notifications: arrayRemove(notification)
+      });
+      await fetchNotifications(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      Alert.alert('Error', 'Failed to delete notification. Please try again.');
+    }
+  };
+
+  const renderNotification = ({ item }) => (
+    <View style={styles.notificationItem}>
+      <CustomText style={styles.notificationText}>{item.message}</CustomText>
+      <CustomText style={styles.notificationDate}>
+        {new Date(item.createdAt.seconds * 1000).toLocaleString()}
+      </CustomText>
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={() => deleteNotification(item)}
+      >
+        <MaterialIcons name="delete" size={24} color="#E74C3C" />
+      </TouchableOpacity>
+    </View>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.clearAllButton} onPress={clearAllNotifications}>
-          <CustomText style={styles.clearAllText}>Clear All</CustomText>
-        </TouchableOpacity>
-      </View>
       <FlatList
         data={notifications}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        renderItem={renderNotification}
+        keyExtractor={item => item.id}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#3498DB']}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        ListEmptyComponent={<CustomText style={styles.emptyText}>No notifications</CustomText>}
       />
     </View>
   );
@@ -99,56 +86,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECF0F1',
     padding: 20,
   },
-  header: {
-    alignItems: 'flex-end', // Align items to the right
-    marginBottom: 20,
-  },
-  clearAllButton: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  clearAllText: {
-    color: '#ECF0F1',
-    fontSize: 16,
-  },
   notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 5,
     marginBottom: 10,
-    shadowColor: '#2C3E50',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  notificationContent: {
+  notificationText: {
+    fontSize: 16,
+    color: '#2C3E50',
     flex: 1,
   },
-  notificationTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  notificationDescription: {
-    fontSize: 14,
+  notificationDate: {
+    fontSize: 12,
     color: '#7F8C8D',
     marginTop: 5,
   },
   deleteButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E74C3C',
-    width: 50,
-    height: '100%',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginLeft: 4,
+    padding: 5,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#7F8C8D',
   },
 });
 
-export default NotificationScreen;
+export default NotificationsScreen;

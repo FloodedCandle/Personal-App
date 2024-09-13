@@ -5,7 +5,8 @@ import CustomText from '../components/CustomText';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import BudgetItem from '../components/BudgetItem';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
 
 const ChartToggle = ({ chartType, setChartType }) => (
   <View style={styles.toggleContainer}>
@@ -80,8 +81,17 @@ const HomeScreen = ({ navigation }) => {
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
-        setBudgets(userBudgets);
-        console.log('Fetched budgets:', userBudgets);
+        const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
+        setBudgets(activeBudgets);
+
+        // Check for completed budgets and create notifications
+        const completedBudgets = userBudgets.filter(budget => budget.amountSpent >= budget.goal);
+        if (completedBudgets.length > 0) {
+          await createNotifications(completedBudgets);
+          await updateBudgets(userBudgetsRef, activeBudgets);
+        }
+
+        console.log('Fetched budgets:', activeBudgets);
       } else {
         console.log('No budgets found for user');
         setBudgets([]);
@@ -90,6 +100,25 @@ const HomeScreen = ({ navigation }) => {
       console.error('Error fetching budgets: ', error);
     }
   }, []);
+
+  const createNotifications = async (completedBudgets) => {
+    const userId = auth.currentUser.uid;
+    const notificationsRef = doc(db, 'notifications', userId);
+
+    const notifications = completedBudgets.map(budget => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      message: `Congratulations! Your budget "${budget.name}" has reached its goal!`,
+      createdAt: new Date()
+    }));
+
+    await updateDoc(notificationsRef, {
+      notifications: arrayUnion(...notifications)
+    });
+  };
+
+  const updateBudgets = async (userBudgetsRef, activeBudgets) => {
+    await updateDoc(userBudgetsRef, { budgets: activeBudgets });
+  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {

@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import CustomText from './CustomText';
 
-const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress }) => {
+const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress, onEdit, onDelete }) => {
     const progress = (amountSpent / amountTotal) * 100;
 
     return (
@@ -19,6 +19,14 @@ const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress }) => {
                     </View>
                     <CustomText style={styles.progressText}>${amountSpent} / ${amountTotal}</CustomText>
                 </View>
+            </View>
+            <View style={styles.actionButtons}>
+                <TouchableOpacity onPress={onEdit} style={styles.actionButton}>
+                    <MaterialIcons name="edit" size={24} color="#3498DB" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={onDelete} style={styles.actionButton}>
+                    <MaterialIcons name="delete" size={24} color="#E74C3C" />
+                </TouchableOpacity>
             </View>
         </TouchableOpacity>
     );
@@ -66,6 +74,12 @@ const styles = StyleSheet.create({
     progressText: {
         fontSize: 12,
         color: '#7F8C8D',
+    },
+    actionButtons: {
+        flexDirection: 'row',
+    },
+    actionButton: {
+        padding: 5,
     },
 });
 
