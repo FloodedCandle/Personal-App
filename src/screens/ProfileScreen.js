@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
@@ -40,7 +40,7 @@ const ProfileScreen = ({ navigation }) => {
       await updateProfile(currentUser, { displayName: editedUsername });
       await updateDoc(doc(db, 'users', currentUser.uid), { username: editedUsername });
       setIsEditing(false);
-      fetchUserData(); // Refresh user data
+      fetchUserData();
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -111,22 +111,18 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
         <CustomText style={styles.headerTitle}>Profile</CustomText>
-        <TouchableOpacity onPress={isEditing ? handleSave : handleEdit}>
+        <TouchableOpacity onPress={isEditing ? handleSave : handleEdit} style={styles.editButton}>
           <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#2C3E50" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.profileInfo}>
-        <Image
-          source={{ uri: user?.photoURL || 'https://via.placeholder.com/150' }}
-          style={styles.profileImage}
-        />
+        <View style={styles.avatarContainer}>
+          <MaterialIcons name="account-circle" size={100} color="#2C3E50" />
+        </View>
         {isEditing ? (
           <TextInput
             style={styles.editInput}
@@ -140,35 +136,22 @@ const ProfileScreen = ({ navigation }) => {
         <CustomText style={styles.email}>{user?.email}</CustomText>
       </View>
 
-      <View style={styles.settingsContainer}>
-        <TouchableOpacity style={styles.settingItem}>
-          <MaterialIcons name="notifications" size={24} color="#2C3E50" />
-          <CustomText style={styles.settingText}>Notifications</CustomText>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingItem}>
-          <MaterialIcons name="security" size={24} color="#2C3E50" />
-          <CustomText style={styles.settingText}>Security</CustomText>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingItem}>
-          <MaterialIcons name="help" size={24} color="#2C3E50" />
-          <CustomText style={styles.settingText}>Help</CustomText>
-        </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <CustomButton
+          title="Logout"
+          onPress={handleLogout}
+          buttonStyle={styles.logoutButton}
+          textStyle={styles.buttonText}
+        />
+
+        <CustomButton
+          title="Delete Account"
+          onPress={handleDeleteAccount}
+          buttonStyle={styles.deleteButton}
+          textStyle={styles.buttonText}
+        />
       </View>
-
-      <CustomButton
-        title="Logout"
-        onPress={handleLogout}
-        buttonStyle={styles.logoutButton}
-        textStyle={styles.logoutButtonText}
-      />
-
-      <CustomButton
-        title="Delete Account"
-        onPress={handleDeleteAccount}
-        buttonStyle={styles.deleteButton}
-        textStyle={styles.deleteButtonText}
-      />
-    </View>
+    </ScrollView>
   );
 };
 
@@ -176,28 +159,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ECF0F1',
-    padding: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2C3E50',
   },
+  editButton: {
+    padding: 5,
+  },
   profileInfo: {
     alignItems: 'center',
-    marginBottom: 30,
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 20,
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
+  avatarContainer: {
+    marginBottom: 15,
   },
   name: {
     fontSize: 24,
@@ -209,35 +196,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
   },
-  settingsContainer: {
-    marginBottom: 30,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#BDC3C7',
-  },
-  settingText: {
-    marginLeft: 15,
-    fontSize: 16,
-    color: '#2C3E50',
-  },
-  logoutButton: {
-    backgroundColor: '#E74C3C',
-    marginTop: 20,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-  },
-  deleteButton: {
-    backgroundColor: '#C0392B',
-    marginTop: 10,
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-  },
   editInput: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -246,6 +204,22 @@ const styles = StyleSheet.create({
     borderBottomColor: '#2C3E50',
     marginBottom: 5,
     textAlign: 'center',
+    minWidth: 200,
+  },
+  buttonContainer: {
+    padding: 20,
+  },
+  logoutButton: {
+    backgroundColor: '#E74C3C',
+    marginBottom: 15,
+  },
+  deleteButton: {
+    backgroundColor: '#C0392B',
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 
