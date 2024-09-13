@@ -11,8 +11,15 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // ... existing handleLogin function ...
+  const handleLogin = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      console.log('User logged in successfully');
+      navigation.replace('Home'); // Use replace instead of navigate
+    } catch (error) {
+      console.error('Error logging in:', error.message);
+      // Handle error appropriately (e.g., show an alert to the user)
+    }
   };
 
   return (
