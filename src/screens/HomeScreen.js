@@ -8,19 +8,7 @@ import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { getThemeColors } from '../config/chartThemes';
 
-const stringToColor = (str) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  let color = '#';
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    color += ('00' + value.toString(16)).substr(-2);
-  }
-  return color;
-};
-
+// Chart component to display budget overview
 const Chart = ({ categoryData, theme }) => {
   const screenWidth = Dimensions.get('window').width;
   const colors = getThemeColors(theme);
@@ -71,24 +59,21 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [chartTheme, setChartTheme] = useState('default');
 
+  // Fetch budgets from Firestore
   const fetchBudgets = useCallback(async () => {
     try {
       const userId = auth.currentUser?.uid;
-      if (!userId) {
-        console.log('No user logged in');
-        return;
-      }
+      if (!userId) return;
+
       const userBudgetsRef = doc(db, 'userBudgets', userId);
       const docSnap = await getDoc(userBudgetsRef);
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
         const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-        console.log('Fetched budgets:', activeBudgets);
         setBudgets(activeBudgets);
         processCategoryData(activeBudgets);
       } else {
-        console.log('No budgets found');
         setBudgets([]);
         setCategoryData([]);
       }
@@ -97,6 +82,7 @@ const HomeScreen = ({ navigation }) => {
     }
   }, []);
 
+  // Process budget data for chart display
   const processCategoryData = useCallback((budgets) => {
     const categoryMap = {};
     budgets.forEach(budget => {
@@ -111,13 +97,13 @@ const HomeScreen = ({ navigation }) => {
 
     const processedData = Object.entries(categoryMap).map(([name, data]) => ({
       name,
-      amountSaved: data.amountSpent, // Change this to amountSpent
+      amountSaved: data.amountSpent,
       goalAmount: data.goalAmount
     }));
-    console.log('Processed category data:', processedData);
     setCategoryData(processedData);
   }, []);
 
+  // Fetch user preferences for chart theme
   const fetchUserPreferences = useCallback(async () => {
     try {
       const userId = auth.currentUser?.uid;
@@ -138,6 +124,7 @@ const HomeScreen = ({ navigation }) => {
     }
   }, []);
 
+  // Fetch data when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchBudgets();
@@ -147,6 +134,7 @@ const HomeScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, fetchBudgets, fetchUserPreferences]);
 
+  // Handle pull-to-refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchBudgets();
@@ -161,6 +149,7 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('ChartTheme', { currentTheme: chartTheme });
   };
 
+  // Render different components based on item type
   const renderItem = ({ item }) => {
     switch (item.type) {
       case 'header':
@@ -215,6 +204,7 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
+  // Prepare data for FlatList
   const data = [
     { type: 'header', id: 'header' },
     { type: 'chart', id: 'chart' },

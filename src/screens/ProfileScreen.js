@@ -113,7 +113,6 @@ const ProfileScreen = ({ navigation }) => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <CustomText style={styles.headerTitle}>Profile</CustomText>
         <TouchableOpacity onPress={isEditing ? handleSave : handleEdit} style={styles.editButton}>
           <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#2C3E50" />
         </TouchableOpacity>
