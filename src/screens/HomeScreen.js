@@ -2,32 +2,51 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
-import { LineChart, PieChart } from 'react-native-chart-kit';
+import { PieChart } from 'react-native-chart-kit';
 import BudgetItem from '../components/BudgetItem';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { getThemeColors } from '../config/chartThemes';
 
-const ChartToggle = ({ chartType, setChartType }) => (
-  <View style={styles.toggleContainer}>
-    <TouchableOpacity onPress={() => setChartType('pie')} style={styles.toggleButton}>
-      <CustomText style={styles.toggleButtonText}>Pie Chart</CustomText>
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => setChartType('line')} style={styles.toggleButton}>
-      <CustomText style={styles.toggleButtonText}>Line Chart</CustomText>
-    </TouchableOpacity>
-  </View>
-);
+const stringToColor = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+};
 
-const Chart = ({ chartType }) => (
-  chartType === 'pie' ? (
+const Chart = ({ categoryData, theme }) => {
+  const screenWidth = Dimensions.get('window').width;
+  const colors = getThemeColors(theme);
+
+  if (!categoryData || categoryData.length === 0) {
+    return (
+      <View style={styles.emptyChartContainer}>
+        <CustomText>No data available for chart</CustomText>
+      </View>
+    );
+  }
+
+  const pieData = categoryData
+    .filter(category => category && category.name && category.amountSaved !== undefined)
+    .map((category, index) => ({
+      name: category.name,
+      population: category.amountSaved,
+      color: colors[index % colors.length],
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 12,
+    }));
+
+  return (
     <PieChart
-      data={[
-        { name: 'Total A', population: 215, color: '#2ECC71', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-        { name: 'Total B', population: 280, color: '#3498DB', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-        { name: 'Total C', population: 527, color: '#2C3E50', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-      ]}
-      width={Dimensions.get('window').width - 40}
+      data={pieData}
+      width={screenWidth - 40}
       height={220}
       chartConfig={chartConfig}
       accessor="population"
@@ -35,20 +54,8 @@ const Chart = ({ chartType }) => (
       paddingLeft="15"
       absolute
     />
-  ) : (
-    <LineChart
-      data={{
-        labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
-        datasets: [{ data: [500, 1000, 1500, 1200, 2000, 2500] }],
-      }}
-      width={Dimensions.get('window').width - 40}
-      height={220}
-      yAxisLabel="$"
-      chartConfig={chartConfig}
-      style={styles.chart}
-    />
-  )
-);
+  );
+};
 
 const chartConfig = {
   backgroundColor: '#ECF0F1',
@@ -56,22 +63,17 @@ const chartConfig = {
   backgroundGradientTo: '#ECF0F1',
   color: (opacity = 1) => `rgba(44, 62, 80, ${opacity})`,
   style: { borderRadius: 16 },
-  propsForDots: {
-    r: '6',
-    strokeWidth: '2',
-    stroke: '#2C3E50',
-  },
 };
 
 const HomeScreen = ({ navigation }) => {
-  const [chartType, setChartType] = useState('pie');
   const [budgets, setBudgets] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [chartTheme, setChartTheme] = useState('default');
 
   const fetchBudgets = useCallback(async () => {
     try {
       const userId = auth.currentUser?.uid;
-      console.log('Current user ID:', userId);
       if (!userId) {
         console.log('No user logged in');
         return;
@@ -81,60 +83,66 @@ const HomeScreen = ({ navigation }) => {
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
-        const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-        setBudgets(activeBudgets);
-
-        // Check for completed budgets and create notifications
-        const completedBudgets = userBudgets.filter(budget => budget.amountSpent >= budget.goal);
-        if (completedBudgets.length > 0) {
-          await createNotifications(completedBudgets);
-          await updateBudgets(userBudgetsRef, activeBudgets);
-        }
-
-        console.log('Fetched budgets:', activeBudgets);
+        setBudgets(userBudgets);
+        processCategoryData(userBudgets);
       } else {
-        console.log('No budgets found for user');
         setBudgets([]);
+        setCategoryData([]);
       }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
     }
   }, []);
 
-  const createNotifications = async (completedBudgets) => {
-    const userId = auth.currentUser.uid;
-    const notificationsRef = doc(db, 'notifications', userId);
-
-    const notifications = completedBudgets.map(budget => ({
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      message: `Congratulations! Your budget "${budget.name}" has reached its goal!`,
-      createdAt: new Date()
-    }));
-
-    await updateDoc(notificationsRef, {
-      notifications: arrayUnion(...notifications)
+  const processCategoryData = useCallback((budgets) => {
+    const categoryMap = {};
+    budgets.forEach(budget => {
+      if (budget && budget.category) {
+        if (!categoryMap[budget.category]) {
+          categoryMap[budget.category] = { goalAmount: 0, amountSaved: 0 };
+        }
+        categoryMap[budget.category].goalAmount += budget.goal || 0;
+        categoryMap[budget.category].amountSaved += budget.amountSpent || 0;
+      }
     });
-  };
 
-  const updateBudgets = async (userBudgetsRef, activeBudgets) => {
-    await updateDoc(userBudgetsRef, { budgets: activeBudgets });
-  };
+    const processedData = Object.entries(categoryMap).map(([name, data]) => ({
+      name,
+      ...data
+    }));
+    setCategoryData(processedData);
+  }, []);
+
+  const fetchUserPreferences = useCallback(async () => {
+    try {
+      const userId = auth.currentUser?.uid;
+      if (!userId) return;
+
+      const userPrefsRef = doc(db, 'userPreferences', userId);
+      const docSnap = await getDoc(userPrefsRef);
+
+      if (docSnap.exists()) {
+        const { chartTheme } = docSnap.data();
+        if (chartTheme) setChartTheme(chartTheme);
+      } else {
+        // Create the document with a default theme if it doesn't exist
+        await setDoc(userPrefsRef, { chartTheme: 'default' });
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchBudgets();
+      fetchUserPreferences();
     });
 
     return unsubscribe;
-  }, [navigation, fetchBudgets]);
-
-  useEffect(() => {
-    const currentUser = auth.currentUser;
-    console.log('Current user on mount:', currentUser);
-  }, []);
+  }, [navigation, fetchBudgets, fetchUserPreferences]);
 
   const onRefresh = useCallback(async () => {
-    console.log('Refreshing budgets...');
     setRefreshing(true);
     await fetchBudgets();
     setRefreshing(false);
@@ -142,6 +150,10 @@ const HomeScreen = ({ navigation }) => {
 
   const handleBudgetPress = (budget) => {
     navigation.navigate('BudgetDetail', { budget });
+  };
+
+  const handleThemeChange = () => {
+    navigation.navigate('ChartTheme', { currentTheme: chartTheme });
   };
 
   const renderItem = ({ item }) => {
@@ -163,9 +175,13 @@ const HomeScreen = ({ navigation }) => {
       case 'chart':
         return (
           <View style={styles.chartContainer}>
-            <CustomText style={styles.chartTitle}>Total Overview</CustomText>
-            <ChartToggle chartType={chartType} setChartType={setChartType} />
-            <Chart chartType={chartType} />
+            <View style={styles.chartHeader}>
+              <CustomText style={styles.chartTitle}>Budget Overview</CustomText>
+              <TouchableOpacity onPress={handleThemeChange}>
+                <MaterialIcons name="color-lens" size={24} color="#2C3E50" />
+              </TouchableOpacity>
+            </View>
+            <Chart categoryData={categoryData} theme={chartTheme} />
           </View>
         );
       case 'budgetHeader':
@@ -209,14 +225,8 @@ const HomeScreen = ({ navigation }) => {
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={['#2C3E50']}
-            tintColor="#2C3E50"
           />
         }
-        ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <CustomText style={styles.emptyText}>No budgets found. Pull to refresh or create a new budget.</CustomText>
-          </View>
-        )}
       />
     </View>
   );
@@ -261,24 +271,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 10,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  toggleButton: {
-    marginHorizontal: 5,
-    padding: 8,
-    borderRadius: 5,
-    backgroundColor: '#3498DB',
-  },
-  toggleButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  chart: {
-    marginVertical: 8,
-    borderRadius: 16,
   },
   budgetsContainer: {
     flexDirection: 'row',
@@ -325,6 +317,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7F8C8D',
     textAlign: 'center',
+  },
+  emptyChartContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
 });
 

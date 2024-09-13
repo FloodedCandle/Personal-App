@@ -25,7 +25,7 @@ const CreateBudgetScreen = ({ navigation }) => {
     const [reminderFrequency, setReminderFrequency] = useState('weekly');
 
     const handleCreateBudget = async () => {
-        if (!name || !goal) {
+        if (!name || !goal || !category) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
@@ -39,12 +39,14 @@ const CreateBudgetScreen = ({ navigation }) => {
                 name,
                 goal: parseFloat(goal),
                 amountSpent: 0,
-                category: category.name,
+                category, // Make sure this is set
                 icon: category.icon,
                 notificationsEnabled,
                 reminderFrequency,
                 createdAt: new Date(),
             };
+
+            console.log('Creating new budget:', newBudget); // Add this log
 
             const docSnap = await getDoc(userBudgetsRef);
             if (docSnap.exists()) {
