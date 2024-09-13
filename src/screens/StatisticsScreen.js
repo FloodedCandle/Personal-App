@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl } from 'react-native';
 import { PieChart, StackedBarChart } from 'react-native-chart-kit';
 import CustomText from '../components/CustomText';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
+import { useIsFocused } from '@react-navigation/native';
 
 const StatisticsScreen = () => {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const isFocused = useIsFocused();
 
-  useEffect(() => {
-    fetchBudgets();
-  }, []);
-
-  const fetchBudgets = async () => {
+  const fetchBudgets = useCallback(async () => {
     try {
       const userId = auth.currentUser.uid;
       const userBudgetsRef = doc(db, 'userBudgets', userId);
@@ -21,13 +20,27 @@ const StatisticsScreen = () => {
       if (docSnap.exists()) {
         const budgetData = docSnap.data().budgets || [];
         setBudgets(budgetData);
+      } else {
+        setBudgets([]);
       }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching budgets:', error);
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchBudgets();
+    }
+  }, [isFocused, fetchBudgets]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchBudgets();
+    setRefreshing(false);
+  }, [fetchBudgets]);
 
   const screenWidth = Dimensions.get('window').width;
   const chartWidth = screenWidth - 32;
@@ -43,10 +56,10 @@ const StatisticsScreen = () => {
 
   const getCategoryData = () => {
     const categoryTotals = budgets.reduce((acc, budget) => {
-      if (!acc[budget.category]) {
-        acc[budget.category] = 0;
+      if (!acc[budget.category.name]) {
+        acc[budget.category.name] = 0;
       }
-      acc[budget.category] += budget.amountSpent || 0;
+      acc[budget.category.name] += budget.amountSpent || 0;
       return acc;
     }, {});
 
@@ -92,7 +105,16 @@ const StatisticsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3498DB']}
+          />
+        }
+      >
         <View style={styles.summaryContainer}>
           <CustomText style={styles.summaryTitle}>Budget Summary</CustomText>
           <CustomText style={styles.summaryText}>Total Budget: ${totalBudget.toFixed(2)}</CustomText>

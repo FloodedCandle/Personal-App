@@ -37,7 +37,7 @@ const Chart = ({ categoryData, theme }) => {
     .filter(category => category && category.name && category.amountSaved !== undefined)
     .map((category, index) => ({
       name: category.name,
-      population: category.amountSaved,
+      value: category.amountSaved,
       color: colors[index % colors.length],
       legendFontColor: '#7F7F7F',
       legendFontSize: 12,
@@ -49,7 +49,7 @@ const Chart = ({ categoryData, theme }) => {
       width={screenWidth - 40}
       height={220}
       chartConfig={chartConfig}
-      accessor="population"
+      accessor="value"
       backgroundColor="transparent"
       paddingLeft="15"
       absolute
@@ -83,9 +83,11 @@ const HomeScreen = ({ navigation }) => {
 
       if (docSnap.exists()) {
         const userBudgets = docSnap.data().budgets || [];
+        console.log('Fetched budgets:', userBudgets);
         setBudgets(userBudgets);
         processCategoryData(userBudgets);
       } else {
+        console.log('No budgets found');
         setBudgets([]);
         setCategoryData([]);
       }
@@ -97,19 +99,21 @@ const HomeScreen = ({ navigation }) => {
   const processCategoryData = useCallback((budgets) => {
     const categoryMap = {};
     budgets.forEach(budget => {
-      if (budget && budget.category) {
-        if (!categoryMap[budget.category]) {
-          categoryMap[budget.category] = { goalAmount: 0, amountSaved: 0 };
+      if (budget && budget.category && budget.category.name) {
+        if (!categoryMap[budget.category.name]) {
+          categoryMap[budget.category.name] = { goalAmount: 0, amountSpent: 0 };
         }
-        categoryMap[budget.category].goalAmount += budget.goal || 0;
-        categoryMap[budget.category].amountSaved += budget.amountSpent || 0;
+        categoryMap[budget.category.name].goalAmount += budget.goal || 0;
+        categoryMap[budget.category.name].amountSpent += budget.amountSpent || 0;
       }
     });
 
     const processedData = Object.entries(categoryMap).map(([name, data]) => ({
       name,
-      ...data
+      amountSaved: data.amountSpent, // Change this to amountSpent
+      goalAmount: data.goalAmount
     }));
+    console.log('Processed category data:', processedData);
     setCategoryData(processedData);
   }, []);
 
