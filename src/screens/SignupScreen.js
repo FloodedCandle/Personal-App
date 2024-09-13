@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
 import { auth, db } from '../config/firebaseConfig'; // Import your Firebase auth and Firestore instances
@@ -35,75 +35,79 @@ const SignupScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Google and Facebook Sign-In Buttons */}
-      <CustomButton
-        title="Sign in with Google"
-        onPress={() => {
-          // Handle Google sign-in logic here
-        }}
-        buttonStyle={styles.socialButton}
-        textStyle={styles.socialButtonText}
-      />
-      <CustomButton
-        title="Sign in with Facebook"
-        onPress={() => {
-          // Handle Facebook sign-in logic here
-        }}
-        buttonStyle={[styles.socialButton, styles.facebookButton]}
-        textStyle={styles.socialButtonText}
-      />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.formContainer}>
+          <CustomText style={styles.title}>Create Account</CustomText>
 
-      {/* Separator */}
-      <View style={styles.separatorContainer}>
-        <View style={styles.separator} />
-        <CustomText style={styles.separatorText}>OR</CustomText>
-        <View style={styles.separator} />
-      </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={true}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-      {/* Username, Email, and Password Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={(text) => setUsername(text)}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={(text) => setEmail(text)}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={(text) => setPassword(text)}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+          <CustomButton
+            title="Sign Up"
+            onPress={handleSignUp}
+            buttonStyle={styles.signupButton}
+            textStyle={styles.buttonText}
+          />
 
-      {/* Already have an account? */}
-      <View style={styles.textContainer}>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <CustomText style={styles.text}>Already have an account? Log in</CustomText>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <CustomText style={styles.loginText}>
+              Already have an account? Log in
+            </CustomText>
+          </TouchableOpacity>
 
-      {/* Signup Button */}
-      <CustomButton
-        title="Sign Up"
-        onPress={handleSignUp}
-        buttonStyle={styles.signupButton}
-        textStyle={styles.signupButtonText}
-      />
-    </View>
+          <View style={styles.separatorContainer}>
+            <View style={styles.separator} />
+            <CustomText style={styles.separatorText}>OR</CustomText>
+            <View style={styles.separator} />
+          </View>
+
+          <CustomButton
+            title="Sign up with Google"
+            onPress={() => {
+              // Handle Google sign-up logic here
+            }}
+            buttonStyle={styles.socialButton}
+            textStyle={styles.socialButtonText}
+          />
+          <CustomButton
+            title="Sign up with Facebook"
+            onPress={() => {
+              // Handle Facebook sign-up logic here
+            }}
+            buttonStyle={[styles.socialButton, styles.facebookButton]}
+            textStyle={styles.socialButtonText}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -112,69 +116,93 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#ECF0F1',
-    padding: 20,
   },
-  socialButton: {
-    backgroundColor: '#3498DB',
-    width: '90%',
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 30,
+    paddingTop: 30,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  input: {
+    width: '100%',
+    height: 50,
+    borderColor: '#E0E0E0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingLeft: 15,
+    marginBottom: 15,
+    backgroundColor: '#F5F5F5',
+    fontSize: 16,
+  },
+  signupButton: {
+    backgroundColor: '#2ECC71',
+    width: '100%',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 10,
+    marginTop: 20,
+    marginBottom: 20,
   },
-  facebookButton: {
-    backgroundColor: '#3B5998',
-  },
-  socialButtonText: {
-    fontSize: 16,
+  buttonText: {
+    fontSize: 18,
     color: '#FFF',
+    fontWeight: 'bold',
+  },
+  loginText: {
+    color: '#3498DB',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
   },
   separatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '90%',
     marginVertical: 20,
   },
   separator: {
     flex: 1,
     height: 1,
-    backgroundColor: '#2C3E50',
+    backgroundColor: '#E0E0E0',
   },
   separatorText: {
     marginHorizontal: 10,
     fontSize: 14,
     color: '#2C3E50',
   },
-  input: {
-    width: '90%',
-    height: 50,
-    borderColor: '#2C3E50',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingLeft: 10,
-    marginBottom: 15,
-    backgroundColor: '#FFF',
-  },
-  textContainer: {
-    width: '90%',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  text: {
-    color: '#3498DB',
-    fontSize: 14,
-  },
-  signupButton: {
-    backgroundColor: '#2ECC71',
-    width: '90%',
+  socialButton: {
+    backgroundColor: '#DB4437',
+    width: '100%',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 10,
   },
-  signupButtonText: {
+  facebookButton: {
+    backgroundColor: '#4267B2',
+  },
+  socialButtonText: {
     fontSize: 16,
     color: '#FFF',
   },

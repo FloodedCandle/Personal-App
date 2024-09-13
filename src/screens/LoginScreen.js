@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Image, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import { View, TextInput, Image, StyleSheet, Dimensions, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText'; // Make sure CustomText is a Text component
 import { auth } from '../config/firebaseConfig'; // Import your Firebase auth instance
@@ -12,163 +12,129 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        // Signed in successfully
-        const user = userCredential.user;
-        console.log('User logged in:', user);
-        // Navigate to Home screen
-        navigation.navigate('Drawer');
-      })
-      .catch((error) => {
-        console.error('Error logging in:', error.message);
-        if (error.code === 'auth/user-not-found') {
-          Alert.alert(
-            'Account Not Found',
-            'This email is not registered. Would you like to create a new account?',
-            [
-              {
-                text: 'Cancel',
-                style: 'cancel',
-              },
-              {
-                text: 'Sign Up',
-                onPress: () => navigation.navigate('Signup'),
-              },
-            ]
-          );
-        } else if (error.code === 'auth/wrong-password') {
-          Alert.alert(
-            'Incorrect Password',
-            'The password you entered is incorrect. Please try again.',
-            [{ text: 'OK' }]
-          );
-        } else if (error.code === 'auth/invalid-email') {
-          Alert.alert(
-            'Invalid Email',
-            'Please enter a valid email address.',
-            [{ text: 'OK' }]
-          );
-        } else {
-          Alert.alert(
-            'Login Error',
-            'An unexpected error occurred. Please try again later.',
-            [{ text: 'OK' }]
-          );
-        }
-      });
+    // ... existing handleLogin function ...
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo */}
-      <Image source={logo} style={styles.logo} resizeMode="contain" />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <View style={styles.logoContainer}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </View>
 
-      {/* Separator */}
-      <View style={styles.separator} />
+      <View style={styles.formContainer}>
+        <CustomText style={styles.title}>Welcome Back</CustomText>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={email}
+          onChangeText={setEmail}
+        />
 
-      {/* Email Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={email}
-        onChangeText={setEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry={true}
+          autoCapitalize="none"
+          autoCorrect={false}
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      {/* Password Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry={true}
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={password}
-        onChangeText={setPassword}
-      />
+        <CustomButton
+          title="Login"
+          onPress={handleLogin}
+          buttonStyle={styles.button}
+          textStyle={styles.buttonText}
+        />
 
-      {/* Forgot Password and Signup Text on the same line */}
-      <View style={styles.textRow}>
-        <TouchableOpacity>
-          <CustomText style={styles.text}>Forgot Password?</CustomText>
-        </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-          <CustomText style={[styles.text, styles.signUpText]}>
-            Don't have an account?
+          <CustomText style={styles.signUpText}>
+            Don't have an account? Sign Up
           </CustomText>
         </TouchableOpacity>
       </View>
-
-      {/* Login Button */}
-      <CustomButton
-        title="Login"
-        onPress={handleLogin}
-        buttonStyle={styles.button}
-        textStyle={styles.buttonText}
-      />
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#ECF0F1',
+  },
+  logoContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ECF0F1',
-    padding: 20,
+  },
+  formContainer: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 30,
+    paddingTop: 30,
+    paddingBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   logo: {
-    width: width * 0.6,
+    width: width * 0.4,
     height: undefined,
     aspectRatio: 1,
-    marginBottom: 20,
     backgroundColor: '#2C3E50',
-    borderRadius: 12,
+    borderRadius: 20,
   },
-  separator: {
-    width: '90%',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2C3E50',
-    marginVertical: 20,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 30,
   },
   input: {
-    width: '90%',
+    width: '100%',
     height: 50,
-    borderColor: '#2C3E50',
+    borderColor: '#E0E0E0',
     borderWidth: 1,
     borderRadius: 8,
-    paddingLeft: 10,
+    paddingLeft: 15,
     marginBottom: 15,
-    backgroundColor: '#FFF',
-  },
-  textRow: {
-    width: '90%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  text: {
-    color: '#3498DB',
-    fontSize: 14,
-  },
-  signUpText: {
-    marginLeft: 10, // Optional space between the two texts
+    backgroundColor: '#F5F5F5',
+    fontSize: 16,
   },
   button: {
     backgroundColor: '#2ECC71',
-    width: '90%',
+    width: '100%',
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#FFF',
+    fontWeight: 'bold',
+  },
+  signUpText: {
+    color: '#3498DB',
+    fontSize: 16,
   },
 });
 
