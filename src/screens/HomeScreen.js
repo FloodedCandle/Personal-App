@@ -194,11 +194,15 @@ const HomeScreen = ({ navigation }) => {
           </View>
         );
       case 'budget':
+        const progress = Math.min((item.amountSpent || 0) / item.goal, 1); // Cap progress at 100%
+        const remaining = Math.max(item.goal - (item.amountSpent || 0), 0); // Ensure remaining is not negative
         return (
           <BudgetItem
             name={item.name}
             amountSpent={item.amountSpent || 0}
             amountTotal={item.goal}
+            remaining={remaining}
+            progress={progress}
             icon={item.icon}
             onPress={() => handleBudgetPress(item)}
           />

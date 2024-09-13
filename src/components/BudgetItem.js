@@ -4,20 +4,20 @@ import { MaterialIcons } from '@expo/vector-icons';
 import CustomText from './CustomText';
 
 const BudgetItem = ({ name, amountSpent, amountTotal, icon, onPress, onEdit, onDelete }) => {
-    const progress = (amountSpent / amountTotal) * 100;
-
     return (
         <TouchableOpacity style={styles.budgetItem} onPress={onPress}>
             <View style={styles.iconContainer}>
-                <MaterialIcons name={icon} size={24} color="#2ECC71" />
+                <MaterialIcons name={icon || 'attach-money'} size={24} color="#2ECC71" />
             </View>
             <View style={styles.budgetDetails}>
                 <CustomText style={styles.budgetName}>{name}</CustomText>
                 <View style={styles.progressContainer}>
                     <View style={styles.progressBarBackground}>
-                        <View style={[styles.progressBar, { width: `${progress}%` }]} />
+                        <View style={[styles.progressBar, { width: `${Math.min((amountSpent / amountTotal) * 100, 100)}%` }]} />
                     </View>
-                    <CustomText style={styles.progressText}>${amountSpent} / ${amountTotal}</CustomText>
+                    <CustomText style={styles.progressText}>
+                        ${amountSpent.toFixed(2)} / ${amountTotal.toFixed(2)}
+                    </CustomText>
                 </View>
             </View>
             <View style={styles.actionButtons}>

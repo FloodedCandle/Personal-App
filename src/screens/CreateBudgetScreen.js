@@ -5,6 +5,8 @@ import CustomButton from '../components/CustomButton';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const categories = [
     { name: 'Food', icon: 'restaurant' },
@@ -39,14 +41,17 @@ const CreateBudgetScreen = ({ navigation }) => {
                 name,
                 goal: parseFloat(goal),
                 amountSpent: 0,
-                category, // Make sure this is set
+                category: {
+                    name: category.name,
+                    icon: category.icon
+                },
                 icon: category.icon,
                 notificationsEnabled,
                 reminderFrequency,
-                createdAt: new Date(),
+                createdAt: new Date().toISOString(), // Store as ISO string
             };
 
-            console.log('Creating new budget:', newBudget); // Add this log
+            console.log('Creating new budget:', newBudget);
 
             const docSnap = await getDoc(userBudgetsRef);
             if (docSnap.exists()) {

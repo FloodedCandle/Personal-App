@@ -9,6 +9,7 @@ import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 import CreateBudgetScreen from './src/screens/CreateBudgetScreen'; // Add this import
 import ChartThemeScreen from './src/screens/ChartThemeScreen';
+import StatisticsScreen from './src/screens/StatisticsScreen'; // Add this import
 
 const Stack = createStackNavigator();
 
@@ -51,6 +52,11 @@ const App = () => {
             name="ChartTheme"
             component={ChartThemeScreen}
             options={{ title: 'Chart Theme' }}
+          />
+          <Stack.Screen
+            name="Statistics"
+            component={StatisticsScreen}
+            options={{ title: 'Statistics' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

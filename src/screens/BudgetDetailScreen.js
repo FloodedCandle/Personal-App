@@ -9,6 +9,7 @@ import { doc, updateDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
 const BudgetDetailScreen = ({ route, navigation }) => {
     const [budget, setBudget] = useState(route.params.budget);
     const [amount, setAmount] = useState('');
+    const [isAddingFunds, setIsAddingFunds] = useState(false);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
@@ -32,12 +33,28 @@ const BudgetDetailScreen = ({ route, navigation }) => {
     };
 
     const addFunds = async () => {
+        if (isAddingFunds) return; // Prevent double-clicking
+        setIsAddingFunds(true);
+
         if (!amount || isNaN(parseFloat(amount))) {
             Alert.alert('Invalid Amount', 'Please enter a valid number.');
+            setIsAddingFunds(false);
             return;
         }
 
         const fundAmount = parseFloat(amount);
+        const newTotalSpent = (budget.amountSpent || 0) + fundAmount;
+
+        if (newTotalSpent > budget.goal) {
+            Alert.alert(
+                'Exceeds Goal',
+                `Adding $${fundAmount} would exceed the budget goal. The maximum you can add is $${(budget.goal - (budget.amountSpent || 0)).toFixed(2)}.`,
+                [{ text: 'OK' }]
+            );
+            setIsAddingFunds(false);
+            return;
+        }
+
         const userId = auth.currentUser.uid;
         const userBudgetsRef = doc(db, 'userBudgets', userId);
 
@@ -47,24 +64,27 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                 const userBudgets = docSnap.data().budgets;
                 const updatedBudgets = userBudgets.map(b => {
                     if (b.id === budget.id) {
-                        const newAmountSpent = (b.amountSpent || 0) + fundAmount;
-                        return { ...b, amountSpent: newAmountSpent };
+                        return { ...b, amountSpent: newTotalSpent };
                     }
                     return b;
                 });
 
                 await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-
-                // Add transaction
                 await addTransaction(budget.name, fundAmount);
 
+                if (newTotalSpent === budget.goal) {
+                    addNotification(budget.name);
+                }
+
                 Alert.alert('Success', 'Funds added successfully');
-                setAmount(''); // Clear the input field
-                fetchBudgetDetails(); // Refresh the budget details
+                setAmount('');
+                fetchBudgetDetails();
             }
         } catch (error) {
             console.error('Error adding funds:', error);
             Alert.alert('Error', 'Failed to add funds. Please try again.');
+        } finally {
+            setIsAddingFunds(false);
         }
     };
 
@@ -93,11 +113,10 @@ const BudgetDetailScreen = ({ route, navigation }) => {
         }, { merge: true });
     };
 
-    const formatDate = (date) => {
-        if (date && date.seconds) {
-            return new Date(date.seconds * 1000).toLocaleDateString();
-        }
-        return 'N/A';
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
     };
 
     return (
@@ -110,11 +129,13 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                 <CustomText style={styles.detailText}>Goal: ${budget.goal}</CustomText>
                 <CustomText style={styles.detailText}>Spent: ${budget.amountSpent || 0}</CustomText>
                 <CustomText style={styles.detailText}>Remaining: ${budget.goal - (budget.amountSpent || 0)}</CustomText>
-                <CustomText style={styles.detailText}>Category: {budget.category}</CustomText>
-                <CustomText style={styles.detailText}>Created: {formatDate(budget.createdAt)}</CustomText>
+                <CustomText style={styles.detailText}>Category: {budget.category.name}</CustomText>
+                <CustomText style={styles.detailText}>Icon: {budget.category.icon}</CustomText>
+                <CustomText style={styles.detailText}>Notifications: {budget.notificationsEnabled ? 'Enabled' : 'Disabled'}</CustomText>
                 {budget.notificationsEnabled && (
-                    <CustomText style={styles.detailText}>Reminder: {budget.reminderFrequency}</CustomText>
+                    <CustomText style={styles.detailText}>Reminder Frequency: {budget.reminderFrequency}</CustomText>
                 )}
+                <CustomText style={styles.detailText}>Created: {formatDate(budget.createdAt)}</CustomText>
             </View>
             <View style={styles.addFundsContainer}>
                 <TextInput
@@ -128,6 +149,7 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                     title="Add Funds"
                     onPress={addFunds}
                     buttonStyle={styles.addButton}
+                    disabled={isAddingFunds}
                 />
             </View>
         </ScrollView>

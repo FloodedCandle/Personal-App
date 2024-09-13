@@ -6,7 +6,7 @@ import NotificationScreen from '../screens/NotificationsScreen';
 import BudgetScreen from '../screens/BudgetScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TransactionScreen from '../screens/TransactionsScreen';
-import StatisticScreen from '../screens/StatisticsScreen';
+import StatisticsScreen from '../screens/StatisticsScreen';
 import CurrencyScreen from '../screens/CurrncyScreen';
 
 const Drawer = createDrawerNavigator();
@@ -50,8 +50,8 @@ const DrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Statistic"
-        component={StatisticScreen}
+        name="Statistics"
+        component={StatisticsScreen}
         options={{
           drawerIcon: () => <MaterialIcons name="bar-chart" size={24} color="#2C3E50" />
         }}

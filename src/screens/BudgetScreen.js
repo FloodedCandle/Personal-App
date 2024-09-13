@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-nativ
 import CustomText from '../components/CustomText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import BudgetItem from '../components/BudgetItem';
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -39,21 +39,55 @@ const BudgetScreen = () => {
     }
   };
 
+  const handleEditBudget = (budget) => {
+    navigation.navigate('EditBudget', { budget });
+  };
+
+  const handleDeleteBudget = async (budget) => {
+    Alert.alert(
+      "Delete Budget",
+      "Are you sure you want to delete this budget?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              const userId = auth.currentUser.uid;
+              const userBudgetsRef = doc(db, 'userBudgets', userId);
+              const updatedBudgets = budgets.filter(b => b.id !== budget.id);
+              await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+              fetchBudgets(); // Refresh the list
+            } catch (error) {
+              console.error('Error deleting budget: ', error);
+              Alert.alert('Error', 'Failed to delete budget. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderBudgetItem = ({ item }) => (
     <BudgetItem
       name={item.name}
       amountSpent={item.amountSpent || 0}
-      amountTotal={item.goal}
+      amountTotal={item.goal || 0}
       icon={item.icon}
       onPress={() => navigation.navigate('BudgetDetail', { budget: item })}
+      onEdit={() => handleEditBudget(item)}
+      onDelete={() => handleDeleteBudget(item)}
     />
   );
 
+  const getCategories = () => {
+    const categorySet = new Set(budgets.map(budget => budget.category?.name || 'Uncategorized'));
+    return ['All', ...Array.from(categorySet)];
+  };
+
   const filteredBudgets = selectedCategory === 'All'
     ? budgets
-    : budgets.filter(budget => budget.category === selectedCategory);
-
-  const categories = ['All', ...new Set(budgets.map(budget => budget.category))];
+    : budgets.filter(budget => budget.category?.name === selectedCategory);
 
   return (
     <View style={styles.container}>
@@ -64,7 +98,7 @@ const BudgetScreen = () => {
           style={styles.picker}
           onValueChange={(itemValue) => setSelectedCategory(itemValue)}
         >
-          {categories.map((category) => (
+          {getCategories().map((category) => (
             <Picker.Item key={category} label={category} value={category} />
           ))}
         </Picker>
