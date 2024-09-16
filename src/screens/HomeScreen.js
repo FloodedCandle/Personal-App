@@ -68,9 +68,16 @@ const HomeScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [chartTheme, setChartTheme] = useState('default');
   const route = useRoute();
+  const [isOfflineMode, setIsOfflineMode] = useState(route.params?.offlineMode || false);
+
+  const checkOfflineMode = useCallback(async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
+      checkOfflineMode();
       console.log('HomeScreen focused, fetching budgets and loading chart theme');
       fetchBudgets();
       loadChartTheme();
@@ -79,41 +86,45 @@ const HomeScreen = ({ navigation }) => {
 
   const fetchBudgets = useCallback(async () => {
     try {
-      const storedBudgets = await AsyncStorage.getItem('budgets');
-      if (storedBudgets) {
-        const parsedBudgets = JSON.parse(storedBudgets);
-        const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
-        console.log('Stored active budgets:', activeBudgets);
-        dispatch(setBudgets(activeBudgets));
-        processCategoryData(activeBudgets);
-      }
+      const offlineMode = await AsyncStorage.getItem('offlineMode');
+      const isOffline = offlineMode === 'true';
+      setIsOfflineMode(isOffline);
 
-      const netInfo = await NetInfo.fetch();
-      if (netInfo.isConnected) {
+      if (isOffline) {
+        const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+        if (storedBudgets) {
+          const parsedBudgets = JSON.parse(storedBudgets);
+          console.log('Stored offline budgets:', parsedBudgets);
+          dispatch(setBudgets(parsedBudgets));
+          processCategoryData(parsedBudgets);
+        } else {
+          dispatch(setBudgets([]));
+          processCategoryData([]);
+        }
+      } else {
         const userId = auth.currentUser?.uid;
         if (userId) {
           const userBudgetsRef = doc(db, 'userBudgets', userId);
           const docSnap = await getDoc(userBudgetsRef);
           if (docSnap.exists()) {
             const userBudgets = docSnap.data().budgets || [];
-            const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-            console.log('Firestore active budgets:', activeBudgets);
-            dispatch(setBudgets(activeBudgets));
+            console.log('Firestore budgets:', userBudgets);
+            dispatch(setBudgets(userBudgets));
             await AsyncStorage.setItem('budgets', JSON.stringify(userBudgets));
-            processCategoryData(activeBudgets);
+            processCategoryData(userBudgets);
           }
         }
       }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
     }
-  }, [dispatch]);
+  }, [dispatch, processCategoryData]);
 
   const processCategoryData = useCallback((budgets) => {
-    console.log('Processing category data for active budgets:', budgets);
+    console.log('Processing category data for budgets:', budgets);
     const categoryMap = {};
     budgets.forEach(budget => {
-      if (budget && budget.category && budget.category.name && budget.amountSpent < budget.goal) {
+      if (budget && budget.category && budget.category.name) {
         if (!categoryMap[budget.category.name]) {
           categoryMap[budget.category.name] = { goalAmount: 0, amountSpent: 0 };
         }
@@ -159,9 +170,10 @@ const HomeScreen = ({ navigation }) => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    await checkOfflineMode();
     await fetchBudgets();
     setRefreshing(false);
-  }, [fetchBudgets]);
+  }, [fetchBudgets, checkOfflineMode]);
 
   const handleBudgetPress = (budget) => {
     navigation.navigate('BudgetDetail', { budget });
@@ -223,14 +235,16 @@ const HomeScreen = ({ navigation }) => {
   const data = [
     { type: 'chart', id: 'chart' },
     { type: 'budgetHeader', id: 'budgetHeader' },
-    ...budgets.filter(budget => budget.amountSpent < budget.goal).map(budget => ({ type: 'budget', id: budget.id, ...budget }))
+    ...budgets.map(budget => ({ type: 'budget', id: budget.id, ...budget }))
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
         <View style={styles.headerContent}>
-          <CustomText style={styles.headerText}>Dashboard</CustomText>
+          <CustomText style={styles.headerText}>
+            Dashboard{isOfflineMode ? ' (Offline)' : ''}
+          </CustomText>
           <View style={styles.headerIcons}>
             <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.iconButton}>
               <MaterialIcons name="person-outline" size={24} color="#ECF0F1" />

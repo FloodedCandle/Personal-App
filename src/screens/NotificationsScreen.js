@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, SafeAreaView, Dimensions } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,30 +7,37 @@ import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
-
-const NotificationsScreen = () => {
+const NotificationsScreen = ({ route }) => {
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const isOfflineMode = route.params?.offlineMode || false;
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const userId = auth.currentUser.uid;
-      const notificationsRef = doc(db, 'notifications', userId);
-      const docSnap = await getDoc(notificationsRef);
-
-      if (docSnap.exists()) {
-        const notificationsData = docSnap.data().notifications || [];
-        setNotifications(notificationsData.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate()));
+      if (isOfflineMode) {
+        const storedNotifications = await AsyncStorage.getItem('notifications');
+        if (storedNotifications) {
+          setNotifications(JSON.parse(storedNotifications));
+        }
       } else {
-        setNotifications([]);
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const notificationsRef = doc(db, 'notifications', userId);
+          const docSnap = await getDoc(notificationsRef);
+          if (docSnap.exists()) {
+            const notificationsData = docSnap.data().notifications || [];
+            setNotifications(notificationsData.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate()));
+            await AsyncStorage.setItem('notifications', JSON.stringify(notificationsData));
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching notifications: ', error);
       Alert.alert('Error', 'Failed to fetch notifications. Please try again.');
     }
-  }, []);
+  }, [isOfflineMode]);
 
   useFocusEffect(
     useCallback(() => {

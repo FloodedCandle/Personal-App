@@ -52,7 +52,8 @@ const LoginScreen = ({ navigation }) => {
         await AsyncStorage.setItem('savedAccounts', JSON.stringify(updatedAccounts));
       }
 
-      navigation.replace('MainApp');
+      await AsyncStorage.setItem('offlineMode', 'false');
+      navigation.navigate('MainApp');
     } catch (error) {
       console.error('Error logging in:', error.message);
       Alert.alert('Login Error', error.message);

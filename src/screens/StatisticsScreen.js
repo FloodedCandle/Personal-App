@@ -11,30 +11,39 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-const StatisticsScreen = () => {
+const StatisticsScreen = ({ route }) => {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
+  const isOfflineMode = route.params?.offlineMode || false;
   const [chartTheme, setChartTheme] = useState('default');
 
   const fetchBudgets = useCallback(async () => {
     try {
-      const userId = auth.currentUser.uid;
-      const userBudgetsRef = doc(db, 'userBudgets', userId);
-      const docSnap = await getDoc(userBudgetsRef);
-      if (docSnap.exists()) {
-        const budgetData = docSnap.data().budgets || [];
-        setBudgets(budgetData);
+      if (isOfflineMode) {
+        const storedBudgets = await AsyncStorage.getItem('budgets');
+        if (storedBudgets) {
+          setBudgets(JSON.parse(storedBudgets));
+        }
       } else {
-        setBudgets([]);
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userBudgetsRef = doc(db, 'userBudgets', userId);
+          const docSnap = await getDoc(userBudgetsRef);
+          if (docSnap.exists()) {
+            const budgetData = docSnap.data().budgets || [];
+            setBudgets(budgetData);
+            await AsyncStorage.setItem('budgets', JSON.stringify(budgetData));
+          }
+        }
       }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching budgets:', error);
       setLoading(false);
     }
-  }, []);
+  }, [isOfflineMode]);
 
   const loadChartTheme = async () => {
     try {

@@ -5,14 +5,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import GetStartedScreen from './src/screens/GetStartedScreen';
+import OfflineOptionScreen from './src/screens/OfflineOptionScreen';
 import DrawerNavigator from './src/components/DrawerNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
-import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
-import EditBudgetScreen from './src/screens/EditBudgetScreen';
-import ChartThemeScreen from './src/screens/ChartThemeScreen';
-import StatisticsScreen from './src/screens/StatisticsScreen';
+// ... other imports
 
 const Stack = createStackNavigator();
 
@@ -25,6 +23,11 @@ const App = () => {
             <Stack.Screen
               name="GetStarted"
               component={GetStartedScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="OfflineOption"
+              component={OfflineOptionScreen}
               options={{ headerShown: false }}
             />
             <Stack.Screen
@@ -46,27 +49,9 @@ const App = () => {
               name="BudgetDetail"
               component={BudgetDetailScreen}
               options={{ title: 'Budget Details' }}
+              initialParams={{ offlineMode: true }} // Add this line
             />
-            <Stack.Screen
-              name="CreateBudget"
-              component={CreateBudgetScreen}
-              options={{ title: 'Create Budget' }}
-            />
-            <Stack.Screen
-              name="EditBudget"
-              component={EditBudgetScreen}
-              options={{ title: 'Edit Budget' }}
-            />
-            <Stack.Screen
-              name="ChartTheme"
-              component={ChartThemeScreen}
-              options={{ title: 'Chart Theme' }}
-            />
-            <Stack.Screen
-              name="Statistics"
-              component={StatisticsScreen}
-              options={{ title: 'Statistics' }}
-            />
+            {/* ... other screens */}
           </Stack.Navigator>
         </NavigationContainer>
       </GestureHandlerRootView>

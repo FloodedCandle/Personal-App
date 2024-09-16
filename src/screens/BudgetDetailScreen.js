@@ -1,39 +1,62 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, TextInput, Alert, TouchableOpacity } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, updateDoc, arrayUnion, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch, useSelector } from 'react-redux';
+import { setBudgets } from '../redux/budgetSlice';
+import { useRoute } from '@react-navigation/native';
 
-const BudgetDetailScreen = ({ route, navigation }) => {
-    const [budget, setBudget] = useState(route.params.budget);
+const BudgetDetailScreen = ({ navigation }) => {
+    const route = useRoute();
+    const budget = route.params.budget;
     const [amount, setAmount] = useState('');
     const [isAddingFunds, setIsAddingFunds] = useState(false);
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
+    const dispatch = useDispatch();
 
     useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
-            fetchBudgetDetails();
-        });
-
-        return unsubscribe;
-    }, [navigation]);
+        const checkOfflineMode = async () => {
+            const offlineMode = await AsyncStorage.getItem('offlineMode');
+            setIsOfflineMode(offlineMode === 'true');
+        };
+        checkOfflineMode();
+        fetchBudgetDetails();
+    }, []);
 
     const fetchBudgetDetails = async () => {
-        const userId = auth.currentUser.uid;
-        const userBudgetsRef = doc(db, 'userBudgets', userId);
-        const docSnap = await getDoc(userBudgetsRef);
-        if (docSnap.exists()) {
-            const userBudgets = docSnap.data().budgets;
-            const updatedBudget = userBudgets.find(b => b.id === budget.id);
-            if (updatedBudget) {
-                setBudget(updatedBudget);
+        try {
+            const offlineMode = await AsyncStorage.getItem('offlineMode');
+            const isOffline = offlineMode === 'true';
+            setIsOfflineMode(isOffline);
+
+            if (isOffline) {
+                const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+                if (storedBudgets) {
+                    const budgets = JSON.parse(storedBudgets);
+                    const updatedBudget = budgets.find(b => b.id === budget.id);
+                    if (updatedBudget) {
+                        dispatch(setBudgets([updatedBudget]));
+                    }
+                }
+            } else {
+                const storedBudgets = await AsyncStorage.getItem('budgets');
+                if (storedBudgets) {
+                    const budgets = JSON.parse(storedBudgets);
+                    const updatedBudget = budgets.find(b => b.id === budget.id);
+                    if (updatedBudget) {
+                        dispatch(setBudgets([updatedBudget]));
+                    }
+                }
             }
+        } catch (error) {
+            console.error('Error fetching budget details:', error);
         }
     };
 
     const addFunds = async () => {
-        if (isAddingFunds) return; // Prevent double-clicking
+        if (isAddingFunds) return;
         setIsAddingFunds(true);
 
         if (!amount || isNaN(parseFloat(amount))) {
@@ -55,33 +78,32 @@ const BudgetDetailScreen = ({ route, navigation }) => {
             return;
         }
 
-        const userId = auth.currentUser.uid;
-        const userBudgetsRef = doc(db, 'userBudgets', userId);
-
         try {
-            const docSnap = await getDoc(userBudgetsRef);
-            if (docSnap.exists()) {
-                const userBudgets = docSnap.data().budgets;
-                const updatedBudgets = userBudgets.map(b => {
-                    if (b.id === budget.id) {
-                        return { ...b, amountSpent: newTotalSpent };
-                    }
-                    return b;
-                });
+            const updatedBudget = { ...budget, amountSpent: newTotalSpent };
 
-                await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-                await addTransaction(budget.name, fundAmount);
-
-                if (newTotalSpent >= budget.goal) {
-                    await addNotification(budget.name);
-                    Alert.alert('Budget Goal Reached', `Congratulations! You've reached your goal for "${budget.name}"`, [
-                        { text: 'OK', onPress: () => navigation.navigate('MainApp', { screen: 'MainHome' }) }
-                    ]);
-                } else {
-                    Alert.alert('Success', 'Funds added successfully');
-                    setAmount('');
-                    fetchBudgetDetails();
+            if (isOfflineMode) {
+                const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+                const budgets = storedBudgets ? JSON.parse(storedBudgets) : [];
+                const updatedBudgets = budgets.map(b => b.id === updatedBudget.id ? updatedBudget : b);
+                await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
+            } else {
+                const storedBudgets = await AsyncStorage.getItem('budgets');
+                if (storedBudgets) {
+                    const budgets = JSON.parse(storedBudgets);
+                    const updatedBudgets = budgets.map(b => b.id === updatedBudget.id ? updatedBudget : b);
+                    await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
                 }
+            }
+
+            dispatch(setBudgets([updatedBudget]));
+            setAmount('');
+            Alert.alert('Success', 'Funds added successfully');
+
+            if (newTotalSpent >= budget.goal) {
+                await addNotification(budget.name);
+                Alert.alert('Budget Goal Reached', `Congratulations! You've reached your goal for "${budget.name}"`, [
+                    { text: 'OK', onPress: () => navigation.navigate('MainHome') }
+                ]);
             }
         } catch (error) {
             console.error('Error adding funds:', error);
@@ -92,42 +114,20 @@ const BudgetDetailScreen = ({ route, navigation }) => {
     };
 
     const addNotification = async (budgetName) => {
-        const userId = auth.currentUser.uid;
-        const notificationsRef = doc(db, 'notifications', userId);
-        const newNotification = {
-            id: Date.now().toString(),
-            message: `Budget "${budgetName}" has been completed!`,
-            createdAt: new Date()
-        };
-
         try {
-            const docSnap = await getDoc(notificationsRef);
-            if (docSnap.exists()) {
-                await updateDoc(notificationsRef, {
-                    notifications: arrayUnion(newNotification)
-                });
-            } else {
-                await setDoc(notificationsRef, {
-                    notifications: [newNotification]
-                });
-            }
-            console.log('Notification added successfully');
+            const newNotification = {
+                id: Date.now().toString(),
+                message: `Budget "${budgetName}" has been completed!`,
+                createdAt: new Date()
+            };
+
+            const storedNotifications = await AsyncStorage.getItem('notifications');
+            const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+            notifications.push(newNotification);
+            await AsyncStorage.setItem('notifications', JSON.stringify(notifications));
         } catch (error) {
             console.error('Error adding notification:', error);
         }
-    };
-
-    const addTransaction = async (budgetName, amount) => {
-        const userId = auth.currentUser.uid;
-        const transactionsRef = doc(db, 'transactions', userId);
-        await setDoc(transactionsRef, {
-            transactions: arrayUnion({
-                id: Date.now().toString(),
-                budgetName,
-                amount,
-                date: new Date()
-            })
-        }, { merge: true });
     };
 
     const handleEdit = () => {
@@ -145,15 +145,22 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            const userId = auth.currentUser.uid;
-                            const userBudgetsRef = doc(db, 'userBudgets', userId);
-                            const docSnap = await getDoc(userBudgetsRef);
-                            if (docSnap.exists()) {
-                                const userBudgets = docSnap.data().budgets;
-                                const updatedBudgets = userBudgets.filter(b => b.id !== budget.id);
-                                await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-                                navigation.goBack();
+                            if (isOfflineMode) {
+                                const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+                                if (storedBudgets) {
+                                    const budgets = JSON.parse(storedBudgets);
+                                    const updatedBudgets = budgets.filter(b => b.id !== budget.id);
+                                    await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
+                                }
+                            } else {
+                                const storedBudgets = await AsyncStorage.getItem('budgets');
+                                if (storedBudgets) {
+                                    const budgets = JSON.parse(storedBudgets);
+                                    const updatedBudgets = budgets.filter(b => b.id !== budget.id);
+                                    await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
+                                }
                             }
+                            navigation.goBack();
                         } catch (error) {
                             console.error('Error deleting budget:', error);
                             Alert.alert('Error', 'Failed to delete budget. Please try again.');

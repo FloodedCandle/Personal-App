@@ -4,29 +4,40 @@ import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TransactionsScreen = () => {
+const TransactionsScreen = ({ route }) => {
   const [transactions, setTransactions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const isOfflineMode = route.params?.offlineMode || false;
 
   const fetchTransactions = useCallback(async () => {
     try {
-      const userId = auth.currentUser.uid;
-      const transactionsRef = doc(db, 'transactions', userId);
-      const docSnap = await getDoc(transactionsRef);
-      if (docSnap.exists()) {
-        const transactionData = docSnap.data().transactions || [];
-        setTransactions(transactionData.sort((a, b) => b.date.toDate() - a.date.toDate()));
-      } else {
-        setTransactions([]);
+      const storedTransactions = await AsyncStorage.getItem('transactions');
+      if (storedTransactions) {
+        setTransactions(JSON.parse(storedTransactions));
+      }
+
+      if (!isOfflineMode) {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const transactionsRef = doc(db, 'transactions', userId);
+          const docSnap = await getDoc(transactionsRef);
+          if (docSnap.exists()) {
+            const transactionsData = docSnap.data().transactions || [];
+            setTransactions(transactionsData.sort((a, b) => b.date.toDate() - a.date.toDate()));
+            await AsyncStorage.setItem('transactions', JSON.stringify(transactionsData));
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
       Alert.alert('Error', 'Failed to fetch transactions. Please try again.');
     }
-  }, []);
+  }, [isOfflineMode]);
 
   useEffect(() => {
     fetchTransactions();
@@ -40,30 +51,44 @@ const TransactionsScreen = () => {
 
   const deleteTransaction = useCallback(async (transactionId) => {
     try {
-      const userId = auth.currentUser.uid;
-      const transactionsRef = doc(db, 'transactions', userId);
-      const updatedTransactions = transactions.filter(t => t.id !== transactionId);
-      await updateDoc(transactionsRef, { transactions: updatedTransactions });
-      setTransactions(updatedTransactions);
-      Alert.alert('Success', 'Transaction deleted successfully');
+      const storedTransactions = await AsyncStorage.getItem('transactions');
+      if (storedTransactions) {
+        const parsedTransactions = JSON.parse(storedTransactions);
+        const updatedTransactions = parsedTransactions.filter(t => t.id !== transactionId);
+        await AsyncStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+
+        if (!isOfflineMode) {
+          const userId = auth.currentUser.uid;
+          const transactionsRef = doc(db, 'transactions', userId);
+          await updateDoc(transactionsRef, { transactions: updatedTransactions });
+        }
+
+        setTransactions(updatedTransactions);
+        Alert.alert('Success', 'Transaction deleted successfully');
+      }
     } catch (error) {
       console.error('Error deleting transaction:', error);
       Alert.alert('Error', 'Failed to delete transaction');
     }
-  }, [transactions]);
+  }, [isOfflineMode]);
 
   const deleteAllTransactions = useCallback(async () => {
     try {
-      const userId = auth.currentUser.uid;
-      const transactionsRef = doc(db, 'transactions', userId);
-      await updateDoc(transactionsRef, { transactions: [] });
+      await AsyncStorage.setItem('transactions', JSON.stringify([]));
       setTransactions([]);
+
+      if (!isOfflineMode && auth.currentUser) {
+        const userId = auth.currentUser.uid;
+        const transactionsRef = doc(db, 'transactions', userId);
+        await updateDoc(transactionsRef, { transactions: [] });
+      }
+
       Alert.alert('Success', 'All transactions deleted successfully');
     } catch (error) {
       console.error('Error deleting all transactions:', error);
       Alert.alert('Error', 'Failed to delete all transactions');
     }
-  }, []);
+  }, [isOfflineMode]);
 
   const confirmDelete = useCallback((transactionId) => {
     Alert.alert(
@@ -87,13 +112,24 @@ const TransactionsScreen = () => {
     );
   }, [deleteAllTransactions]);
 
+  const formatDate = (date) => {
+    if (date instanceof Date) {
+      return date.toLocaleString();
+    } else if (date && typeof date.toDate === 'function') {
+      return date.toDate().toLocaleString();
+    } else if (typeof date === 'string') {
+      return new Date(date).toLocaleString();
+    }
+    return 'Invalid Date';
+  };
+
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionContent}>
         <CustomText style={styles.transactionBudget}>{item.budgetName}</CustomText>
         <CustomText style={styles.transactionAmount}>${item.amount.toFixed(2)}</CustomText>
         <CustomText style={styles.transactionDate}>
-          {item.date.toDate().toLocaleString()}
+          {formatDate(item.date)}
         </CustomText>
       </View>
       <TouchableOpacity onPress={() => confirmDelete(item.id)} style={styles.deleteButton}>

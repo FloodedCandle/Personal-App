@@ -7,11 +7,16 @@ import { auth, db, logout, deleteAccount } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { clearUser } from '../redux/userSlice';
 
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedUsername, setEditedUsername] = useState('');
+
+  const dispatch = useDispatch();
 
   useEffect(() => {
     fetchUserData();
@@ -60,9 +65,13 @@ const ProfileScreen = ({ navigation }) => {
           onPress: async () => {
             try {
               await logout();
+              dispatch(clearUser());
+              // Clear local storage
+              await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
+              // Navigate to GetStarted screen
               navigation.reset({
                 index: 0,
-                routes: [{ name: 'Login' }],
+                routes: [{ name: 'GetStarted' }],
               });
             } catch (error) {
               console.error('Error logging out:', error);

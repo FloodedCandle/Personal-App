@@ -26,7 +26,7 @@ const GetStartedScreen = ({ navigation }) => {
         <View style={styles.buttonContainer}>
           <CustomButton
             title="Get Started"
-            onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.navigate('OfflineOption')}
             buttonStyle={styles.button}
             textStyle={styles.buttonText}
           />
