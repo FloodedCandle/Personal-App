@@ -75,7 +75,7 @@ const BudgetDetailScreen = ({ route, navigation }) => {
                 if (newTotalSpent >= budget.goal) {
                     await addNotification(budget.name);
                     Alert.alert('Budget Goal Reached', `Congratulations! You've reached your goal for "${budget.name}"`, [
-                        { text: 'OK', onPress: () => navigation.navigate('Home') }
+                        { text: 'OK', onPress: () => navigation.navigate('MainApp', { screen: 'MainHome' }) }
                     ]);
                 } else {
                     Alert.alert('Success', 'Funds added successfully');

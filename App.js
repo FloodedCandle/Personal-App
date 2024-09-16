@@ -35,7 +35,7 @@ const App = () => {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-            name="Home"
+            name="MainApp"
             component={DrawerNavigator}
             options={{ headerShown: false }}
           />

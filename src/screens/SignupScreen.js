@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert } from 'react-native';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
 import { auth, db } from '../config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -26,11 +27,18 @@ const SignupScreen = ({ navigation }) => {
         createdAt: new Date()
       });
 
+      // Store the email for auto-fill in login screen
+      await AsyncStorage.setItem('userEmail', email);
+
       console.log('User signed up:', user);
-      navigation.navigate('Login');
+      Alert.alert(
+        "Account Created",
+        "Your account has been successfully created. Please log in.",
+        [{ text: "OK", onPress: () => navigation.navigate('Login') }]
+      );
     } catch (error) {
       console.error('Error signing up:', error.message);
-      // Handle error appropriately
+      Alert.alert("Sign Up Error", error.message);
     }
   };
 

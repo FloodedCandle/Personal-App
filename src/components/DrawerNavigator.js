@@ -13,7 +13,7 @@ const Drawer = createDrawerNavigator();
 
 const DrawerNavigator = () => {
   return (
-    <Drawer.Navigator initialRouteName="Home">
+    <Drawer.Navigator initialRouteName="MainHome">
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
@@ -22,10 +22,11 @@ const DrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Home"
+        name="MainHome"
         component={HomeScreen}
         options={{
-          drawerIcon: () => <MaterialIcons name="home" size={24} color="#2C3E50" />
+          drawerIcon: () => <MaterialIcons name="home" size={24} color="#2C3E50" />,
+          title: "Home"
         }}
       />
       <Drawer.Screen
