@@ -4,14 +4,19 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { PieChart } from 'react-native-chart-kit';
 import BudgetItem from '../components/BudgetItem';
+import { useSelector, useDispatch } from 'react-redux';
+import { setBudgets } from '../redux/budgetSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { getThemeColors } from '../config/chartThemes';
 import { LinearGradient } from 'expo-linear-gradient';
+import NetInfo from '@react-native-community/netinfo';
+import { useFocusEffect } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
-// Chart component to display budget overview
 const Chart = ({ categoryData, theme }) => {
   const screenWidth = Dimensions.get('window').width;
   const colors = getThemeColors(theme);
@@ -57,39 +62,58 @@ const chartConfig = {
 };
 
 const HomeScreen = ({ navigation }) => {
-  const [budgets, setBudgets] = useState([]);
+  const dispatch = useDispatch();
+  const budgets = useSelector(state => state.budgets);
   const [categoryData, setCategoryData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [chartTheme, setChartTheme] = useState('default');
+  const route = useRoute();
 
-  // Fetch budgets from Firestore
+  useFocusEffect(
+    useCallback(() => {
+      console.log('HomeScreen focused, fetching budgets and loading chart theme');
+      fetchBudgets();
+      loadChartTheme();
+    }, [])
+  );
+
   const fetchBudgets = useCallback(async () => {
     try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
-
-      const userBudgetsRef = doc(db, 'userBudgets', userId);
-      const docSnap = await getDoc(userBudgetsRef);
-
-      if (docSnap.exists()) {
-        const userBudgets = docSnap.data().budgets || [];
-        const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-        setBudgets(activeBudgets);
+      const storedBudgets = await AsyncStorage.getItem('budgets');
+      if (storedBudgets) {
+        const parsedBudgets = JSON.parse(storedBudgets);
+        const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
+        console.log('Stored active budgets:', activeBudgets);
+        dispatch(setBudgets(activeBudgets));
         processCategoryData(activeBudgets);
-      } else {
-        setBudgets([]);
-        setCategoryData([]);
+      }
+
+      const netInfo = await NetInfo.fetch();
+      if (netInfo.isConnected) {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userBudgetsRef = doc(db, 'userBudgets', userId);
+          const docSnap = await getDoc(userBudgetsRef);
+          if (docSnap.exists()) {
+            const userBudgets = docSnap.data().budgets || [];
+            const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
+            console.log('Firestore active budgets:', activeBudgets);
+            dispatch(setBudgets(activeBudgets));
+            await AsyncStorage.setItem('budgets', JSON.stringify(userBudgets));
+            processCategoryData(activeBudgets);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
     }
-  }, []);
+  }, [dispatch]);
 
-  // Process budget data for chart display
   const processCategoryData = useCallback((budgets) => {
+    console.log('Processing category data for active budgets:', budgets);
     const categoryMap = {};
     budgets.forEach(budget => {
-      if (budget && budget.category && budget.category.name) {
+      if (budget && budget.category && budget.category.name && budget.amountSpent < budget.goal) {
         if (!categoryMap[budget.category.name]) {
           categoryMap[budget.category.name] = { goalAmount: 0, amountSpent: 0 };
         }
@@ -103,41 +127,36 @@ const HomeScreen = ({ navigation }) => {
       amountSaved: data.amountSpent,
       goalAmount: data.goalAmount
     }));
+    console.log('Processed category data:', processedData);
     setCategoryData(processedData);
   }, []);
 
-  // Fetch user preferences for chart theme
-  const fetchUserPreferences = useCallback(async () => {
-    try {
-      const userId = auth.currentUser?.uid;
-      if (!userId) return;
-
-      const userPrefsRef = doc(db, 'userPreferences', userId);
-      const docSnap = await getDoc(userPrefsRef);
-
-      if (docSnap.exists()) {
-        const { chartTheme } = docSnap.data();
-        if (chartTheme) setChartTheme(chartTheme);
-      } else {
-        // Create the document with a default theme if it doesn't exist
-        await setDoc(userPrefsRef, { chartTheme: 'default' });
-      }
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-    }
-  }, []);
-
-  // Fetch data when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      console.log('HomeScreen focused, fetching budgets');
       fetchBudgets();
-      fetchUserPreferences();
+      loadChartTheme();
     });
 
     return unsubscribe;
-  }, [navigation, fetchBudgets, fetchUserPreferences]);
+  }, [navigation, fetchBudgets]);
 
-  // Handle pull-to-refresh
+  const loadChartTheme = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('chartTheme');
+      if (savedTheme) {
+        setChartTheme(savedTheme);
+      }
+    } catch (error) {
+      console.error('Error loading chart theme:', error);
+    }
+  };
+
+  useEffect(() => {
+    console.log('Budgets changed:', budgets);
+    processCategoryData(budgets);
+  }, [budgets, processCategoryData]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchBudgets();
@@ -152,7 +171,15 @@ const HomeScreen = ({ navigation }) => {
     navigation.navigate('ChartTheme', { currentTheme: chartTheme });
   };
 
-  // Render different components based on item type
+  useEffect(() => {
+    if (route.params?.newTheme) {
+      setChartTheme(route.params.newTheme);
+      AsyncStorage.setItem('chartTheme', route.params.newTheme);
+      // Clear the parameter after using it
+      navigation.setParams({ newTheme: undefined });
+    }
+  }, [route.params?.newTheme]);
+
   const renderItem = ({ item }) => {
     switch (item.type) {
       case 'chart':
@@ -193,11 +220,10 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  // Prepare data for FlatList
   const data = [
     { type: 'chart', id: 'chart' },
     { type: 'budgetHeader', id: 'budgetHeader' },
-    ...budgets.map(budget => ({ type: 'budget', id: budget.id, ...budget }))
+    ...budgets.filter(budget => budget.amountSpent < budget.goal).map(budget => ({ type: 'budget', id: budget.id, ...budget }))
   ];
 
   return (

@@ -7,8 +7,9 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getThemeColors } from '../config/chartThemes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const StatisticsScreen = () => {
   const [budgets, setBudgets] = useState([]);
@@ -35,19 +36,33 @@ const StatisticsScreen = () => {
     }
   }, []);
 
+  const loadChartTheme = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('chartTheme');
+      if (savedTheme) {
+        setChartTheme(savedTheme);
+      }
+    } catch (error) {
+      console.error('Error loading chart theme:', error);
+    }
+  };
+
   useEffect(() => {
     if (isFocused) {
       fetchBudgets();
+      loadChartTheme();
     }
   }, [isFocused, fetchBudgets]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchBudgets();
+    await loadChartTheme();
     setRefreshing(false);
   }, [fetchBudgets]);
 
   const chartWidth = width - 40;
+  const chartHeight = height * 0.25; // Adjust the height to be proportional to the screen
   const colors = getThemeColors(chartTheme);
 
   const chartConfig = {
@@ -129,7 +144,7 @@ const StatisticsScreen = () => {
               <CustomText style={styles.summaryValue}>${totalRemaining.toFixed(2)}</CustomText>
             </View>
             <View style={styles.summaryItem}>
-              <CustomText style={styles.summaryLabel}>Spent Percentage</CustomText>
+              <CustomText style={styles.summaryLabel}>Spent %</CustomText>
               <CustomText style={styles.summaryValue}>{((totalSpent / totalBudget) * 100).toFixed(1)}%</CustomText>
             </View>
           </View>
@@ -139,7 +154,7 @@ const StatisticsScreen = () => {
               <CustomText style={styles.summaryValue}>{activeBudgets}</CustomText>
             </View>
             <View style={styles.summaryItem}>
-              <CustomText style={styles.summaryLabel}>Completed Budgets</CustomText>
+              <CustomText style={styles.summaryLabel}>Completed</CustomText>
               <CustomText style={styles.summaryValue}>{completedBudgets}</CustomText>
             </View>
           </View>
@@ -150,7 +165,7 @@ const StatisticsScreen = () => {
           <PieChart
             data={getCategoryData()}
             width={chartWidth}
-            height={220}
+            height={chartHeight}
             chartConfig={chartConfig}
             accessor="population"
             backgroundColor="transparent"
@@ -169,23 +184,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#ECF0F1',
   },
   header: {
-    padding: 20,
+    padding: 15,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#ECF0F1',
   },
   scrollContent: {
-    padding: 20,
+    flexGrow: 1,
+    padding: 15,
   },
   summaryContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    padding: 15,
     borderRadius: 10,
-    marginBottom: 20,
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -196,34 +212,33 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   summaryTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 15,
+    marginBottom: 10,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   summaryItem: {
     flex: 1,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#7F8C8D',
-    marginBottom: 5,
   },
   summaryValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#2C3E50',
   },
   chartContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
-    padding: 20,
-    marginBottom: 20,
+    padding: 15,
+    marginBottom: 15,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -237,7 +252,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 15,
+    marginBottom: 10,
   },
 });
 

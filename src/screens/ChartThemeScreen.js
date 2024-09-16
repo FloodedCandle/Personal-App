@@ -2,24 +2,15 @@ import React from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import CustomText from '../components/CustomText';
 import { chartThemes } from '../config/chartThemes';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, setDoc } from 'firebase/firestore';
 
 const ChartThemeScreen = ({ navigation, route }) => {
     const { currentTheme } = route.params;
 
-    const handleThemeSelect = async (theme) => {
-        try {
-            const userId = auth.currentUser?.uid;
-            if (!userId) return;
-
-            const userPrefsRef = doc(db, 'userPreferences', userId);
-            await setDoc(userPrefsRef, { chartTheme: theme }, { merge: true });
-
-            navigation.goBack();
-        } catch (error) {
-            console.error('Error updating theme:', error);
-        }
+    const handleThemeSelect = (theme) => {
+        navigation.navigate('MainApp', {
+            screen: 'MainHome',
+            params: { newTheme: theme },
+        });
     };
 
     const renderThemeItem = ({ item }) => (

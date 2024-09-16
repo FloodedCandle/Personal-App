@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, Image, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert, Modal, FlatList, Dimensions } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/userSlice';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
 import { auth } from '../config/firebaseConfig';
@@ -16,6 +18,7 @@ const LoginScreen = ({ navigation }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [savedAccounts, setSavedAccounts] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const getStoredAccounts = async () => {
@@ -34,8 +37,15 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      console.log('User logged in successfully');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      dispatch(setUser({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        emailVerified: user.emailVerified,
+      }));
 
       if (rememberMe) {
         const updatedAccounts = [...savedAccounts.filter(acc => acc.email !== email), { email, password }];
@@ -220,11 +230,6 @@ const styles = StyleSheet.create({
   },
   dropdownButton: {
     padding: 10,
-  },
-  rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
   },
   checkboxContainer: {
     flexDirection: 'row',
