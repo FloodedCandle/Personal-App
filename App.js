@@ -10,6 +10,7 @@ import DrawerNavigator from './src/components/DrawerNavigator';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
+import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
 // ... other imports
 
 const Stack = createStackNavigator();
@@ -50,6 +51,11 @@ const App = () => {
               component={BudgetDetailScreen}
               options={{ title: 'Budget Details' }}
               initialParams={{ offlineMode: true }} // Add this line
+            />
+            <Stack.Screen
+              name="CreateBudget"
+              component={CreateBudgetScreen}
+              options={{ title: 'Create Budget' }}
             />
             {/* ... other screens */}
           </Stack.Navigator>

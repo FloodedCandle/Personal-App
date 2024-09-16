@@ -13,9 +13,8 @@ import { getThemeColors } from '../config/chartThemes';
 import { LinearGradient } from 'expo-linear-gradient';
 import NetInfo from '@react-native-community/netinfo';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRoute } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const Chart = ({ categoryData, theme }) => {
   const screenWidth = Dimensions.get('window').width;
@@ -67,22 +66,12 @@ const HomeScreen = ({ navigation }) => {
   const [categoryData, setCategoryData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [chartTheme, setChartTheme] = useState('default');
-  const route = useRoute();
-  const [isOfflineMode, setIsOfflineMode] = useState(route.params?.offlineMode || false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const checkOfflineMode = useCallback(async () => {
     const offlineMode = await AsyncStorage.getItem('offlineMode');
     setIsOfflineMode(offlineMode === 'true');
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      checkOfflineMode();
-      console.log('HomeScreen focused, fetching budgets and loading chart theme');
-      fetchBudgets();
-      loadChartTheme();
-    }, [])
-  );
 
   const fetchBudgets = useCallback(async () => {
     try {
@@ -94,9 +83,10 @@ const HomeScreen = ({ navigation }) => {
         const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
         if (storedBudgets) {
           const parsedBudgets = JSON.parse(storedBudgets);
-          console.log('Stored offline budgets:', parsedBudgets);
-          dispatch(setBudgets(parsedBudgets));
-          processCategoryData(parsedBudgets);
+          const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
+          console.log('Stored offline active budgets:', activeBudgets);
+          dispatch(setBudgets(activeBudgets));
+          processCategoryData(activeBudgets);
         } else {
           dispatch(setBudgets([]));
           processCategoryData([]);
@@ -108,10 +98,11 @@ const HomeScreen = ({ navigation }) => {
           const docSnap = await getDoc(userBudgetsRef);
           if (docSnap.exists()) {
             const userBudgets = docSnap.data().budgets || [];
-            console.log('Firestore budgets:', userBudgets);
-            dispatch(setBudgets(userBudgets));
+            const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
+            console.log('Firestore active budgets:', activeBudgets);
+            dispatch(setBudgets(activeBudgets));
             await AsyncStorage.setItem('budgets', JSON.stringify(userBudgets));
-            processCategoryData(userBudgets);
+            processCategoryData(activeBudgets);
           }
         }
       }
@@ -121,7 +112,7 @@ const HomeScreen = ({ navigation }) => {
   }, [dispatch, processCategoryData]);
 
   const processCategoryData = useCallback((budgets) => {
-    console.log('Processing category data for budgets:', budgets);
+    console.log('Processing category data for active budgets:', budgets);
     const categoryMap = {};
     budgets.forEach(budget => {
       if (budget && budget.category && budget.category.name) {
@@ -142,15 +133,13 @@ const HomeScreen = ({ navigation }) => {
     setCategoryData(processedData);
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      console.log('HomeScreen focused, fetching budgets');
+  useFocusEffect(
+    useCallback(() => {
+      checkOfflineMode();
       fetchBudgets();
       loadChartTheme();
-    });
-
-    return unsubscribe;
-  }, [navigation, fetchBudgets]);
+    }, [checkOfflineMode, fetchBudgets])
+  );
 
   const loadChartTheme = async () => {
     try {
@@ -163,34 +152,21 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
-    console.log('Budgets changed:', budgets);
-    processCategoryData(budgets);
-  }, [budgets, processCategoryData]);
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await checkOfflineMode();
     await fetchBudgets();
+    await loadChartTheme();
     setRefreshing(false);
-  }, [fetchBudgets, checkOfflineMode]);
+  }, [checkOfflineMode, fetchBudgets]);
 
   const handleBudgetPress = (budget) => {
-    navigation.navigate('BudgetDetail', { budget });
+    navigation.navigate('BudgetDetail', { budget, isOfflineMode });
   };
 
   const handleThemeChange = () => {
     navigation.navigate('ChartTheme', { currentTheme: chartTheme });
   };
-
-  useEffect(() => {
-    if (route.params?.newTheme) {
-      setChartTheme(route.params.newTheme);
-      AsyncStorage.setItem('chartTheme', route.params.newTheme);
-      // Clear the parameter after using it
-      navigation.setParams({ newTheme: undefined });
-    }
-  }, [route.params?.newTheme]);
 
   const renderItem = ({ item }) => {
     switch (item.type) {
@@ -210,21 +186,19 @@ const HomeScreen = ({ navigation }) => {
         return (
           <View style={styles.budgetsContainer}>
             <CustomText style={styles.budgetsTitle}>Budgets</CustomText>
-            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateBudget')}>
+            <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('CreateBudget', { isOfflineMode })}>
               <MaterialIcons name="add" size={24} color="#ECF0F1" />
             </TouchableOpacity>
           </View>
         );
       case 'budget':
-        const progress = Math.min((item.amountSpent || 0) / item.goal, 1);
-        const remaining = Math.max(item.goal - (item.amountSpent || 0), 0);
         return (
           <BudgetItem
             name={item.name}
             amountSpent={item.amountSpent || 0}
             amountTotal={item.goal}
-            remaining={remaining}
-            progress={progress}
+            remaining={Math.max(item.goal - (item.amountSpent || 0), 0)}
+            progress={Math.min((item.amountSpent || 0) / item.goal, 1)}
             icon={item.icon}
             onPress={() => handleBudgetPress(item)}
           />
