@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, SafeAreaView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { auth, db, logout, deleteAccount } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -111,46 +112,56 @@ const ProfileScreen = ({ navigation }) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+        <CustomText style={styles.headerText}>Profile</CustomText>
         <TouchableOpacity onPress={isEditing ? handleSave : handleEdit} style={styles.editButton}>
-          <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#2C3E50" />
+          <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#ECF0F1" />
         </TouchableOpacity>
-      </View>
-
-      <View style={styles.profileInfo}>
-        <View style={styles.avatarContainer}>
-          <MaterialIcons name="account-circle" size={100} color="#2C3E50" />
+      </LinearGradient>
+      <ScrollView style={styles.content}>
+        <View style={styles.profileInfo}>
+          <View style={styles.avatarContainer}>
+            <MaterialIcons name="account-circle" size={100} color="#3498DB" />
+          </View>
+          {isEditing ? (
+            <TextInput
+              style={styles.editInput}
+              value={editedUsername}
+              onChangeText={setEditedUsername}
+              placeholder="Enter username"
+            />
+          ) : (
+            <CustomText style={styles.name}>{user?.username || user?.displayName || 'User Name'}</CustomText>
+          )}
+          <CustomText style={styles.email}>{user?.email}</CustomText>
         </View>
-        {isEditing ? (
-          <TextInput
-            style={styles.editInput}
-            value={editedUsername}
-            onChangeText={setEditedUsername}
-            placeholder="Enter username"
+
+        <View style={styles.infoContainer}>
+          <View style={styles.infoItem}>
+            <MaterialIcons name="date-range" size={24} color="#3498DB" />
+            <CustomText style={styles.infoText}>Joined: {user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}</CustomText>
+          </View>
+          {/* Add more user info items here if needed */}
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <CustomButton
+            title="Logout"
+            onPress={handleLogout}
+            buttonStyle={styles.logoutButton}
+            textStyle={styles.buttonText}
           />
-        ) : (
-          <CustomText style={styles.name}>{user?.username || user?.displayName || 'User Name'}</CustomText>
-        )}
-        <CustomText style={styles.email}>{user?.email}</CustomText>
-      </View>
 
-      <View style={styles.buttonContainer}>
-        <CustomButton
-          title="Logout"
-          onPress={handleLogout}
-          buttonStyle={styles.logoutButton}
-          textStyle={styles.buttonText}
-        />
-
-        <CustomButton
-          title="Delete Account"
-          onPress={handleDeleteAccount}
-          buttonStyle={styles.deleteButton}
-          textStyle={styles.buttonText}
-        />
-      </View>
-    </ScrollView>
+          <CustomButton
+            title="Delete Account"
+            onPress={handleDeleteAccount}
+            buttonStyle={styles.deleteButton}
+            textStyle={styles.buttonText}
+          />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -164,26 +175,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
-  headerTitle: {
+  headerText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2C3E50',
+    color: '#ECF0F1',
   },
   editButton: {
     padding: 5,
   },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
   profileInfo: {
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
     marginBottom: 20,
   },
   avatarContainer: {
     marginBottom: 15,
+    backgroundColor: '#ECF0F1',
+    borderRadius: 50,
+    padding: 5,
   },
   name: {
     fontSize: 24,
@@ -200,13 +215,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2C3E50',
     borderBottomWidth: 1,
-    borderBottomColor: '#2C3E50',
+    borderBottomColor: '#3498DB',
     marginBottom: 5,
     textAlign: 'center',
     minWidth: 200,
   },
+  infoContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  infoText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#2C3E50',
+  },
   buttonContainer: {
-    padding: 20,
+    marginTop: 20,
   },
   logoutButton: {
     backgroundColor: '#E74C3C',

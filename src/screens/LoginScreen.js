@@ -5,7 +5,6 @@ import CustomText from '../components/CustomText';
 import { auth } from '../config/firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CheckBox } from 'react-native-elements';
 import { MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
@@ -62,6 +61,15 @@ const LoginScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  const CustomCheckbox = ({ checked, onPress, label }) => (
+    <TouchableOpacity style={styles.checkboxContainer} onPress={onPress}>
+      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
+        {checked && <MaterialIcons name="check" size={18} color="#FFFFFF" />}
+      </View>
+      <CustomText style={styles.checkboxLabel}>{label}</CustomText>
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -75,10 +83,11 @@ const LoginScreen = ({ navigation }) => {
         <View style={styles.formContainer}>
           <CustomText style={styles.title}>Welcome Back</CustomText>
           <View style={styles.inputContainer}>
-            <MaterialIcons name="email" size={24} color="#7F8C8D" style={styles.inputIcon} />
+            <MaterialIcons name="email" size={24} color="#3498DB" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="#95A5A6"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
@@ -87,16 +96,17 @@ const LoginScreen = ({ navigation }) => {
             />
             {savedAccounts.length > 0 && (
               <TouchableOpacity style={styles.dropdownButton} onPress={() => setShowDropdown(!showDropdown)}>
-                <MaterialIcons name="arrow-drop-down" size={24} color="#2C3E50" />
+                <MaterialIcons name="arrow-drop-down" size={24} color="#3498DB" />
               </TouchableOpacity>
             )}
           </View>
 
           <View style={styles.inputContainer}>
-            <MaterialIcons name="lock" size={24} color="#7F8C8D" style={styles.inputIcon} />
+            <MaterialIcons name="lock" size={24} color="#3498DB" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Password"
+              placeholderTextColor="#95A5A6"
               secureTextEntry={true}
               autoCapitalize="none"
               autoCorrect={false}
@@ -105,15 +115,11 @@ const LoginScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.rememberMeContainer}>
-            <CheckBox
-              title="Remember Me"
-              checked={rememberMe}
-              onPress={() => setRememberMe(!rememberMe)}
-              containerStyle={styles.checkboxContainer}
-              textStyle={styles.checkboxText}
-            />
-          </View>
+          <CustomCheckbox
+            checked={rememberMe}
+            onPress={() => setRememberMe(!rememberMe)}
+            label="Remember Me"
+          />
 
           <CustomButton
             title="Login"
@@ -162,6 +168,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
+    padding: 20,
   },
   logoContainer: {
     alignItems: 'center',
@@ -175,43 +182,41 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: width * 0.08,
-    paddingTop: height * 0.05,
-    paddingBottom: height * 0.03,
+    borderRadius: 15,
+    padding: 20,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: -3,
+      height: 2,
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
   },
   title: {
-    fontSize: width * 0.08,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: height * 0.03,
+    marginBottom: 20,
     textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.02,
-    borderColor: '#E0E0E0',
+    marginBottom: 15,
+    borderColor: '#3498DB',
     borderWidth: 1,
     borderRadius: 8,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
   },
   inputIcon: {
     padding: 10,
   },
   input: {
     flex: 1,
-    height: height * 0.06,
-    fontSize: width * 0.04,
+    height: 50,
+    fontSize: 16,
+    color: '#2C3E50',
   },
   dropdownButton: {
     padding: 10,
@@ -219,34 +224,45 @@ const styles = StyleSheet.create({
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: height * 0.02,
+    marginBottom: 15,
   },
   checkboxContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-    margin: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
   },
-  checkboxText: {
-    fontWeight: 'normal',
-    fontSize: width * 0.035,
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: '#3498DB',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checkboxChecked: {
+    backgroundColor: '#3498DB',
+  },
+  checkboxLabel: {
+    fontSize: 16,
     color: '#2C3E50',
   },
   button: {
     backgroundColor: '#2ECC71',
-    paddingVertical: height * 0.02,
+    paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: height * 0.02,
+    marginBottom: 15,
   },
   buttonText: {
-    fontSize: width * 0.045,
-    color: '#FFF',
+    fontSize: 18,
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   signUpText: {
     color: '#3498DB',
-    fontSize: width * 0.04,
+    fontSize: 16,
     textAlign: 'center',
   },
   modalOverlay: {

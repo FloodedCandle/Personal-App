@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, SafeAreaView, Dimensions } from 'react-native';
 import CustomText from '../components/CustomText';
+import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
@@ -79,16 +83,19 @@ const NotificationsScreen = () => {
         style={styles.deleteButton}
         onPress={() => deleteNotification(item)}
       >
-        <MaterialIcons name="delete" size={24} color="#E74C3C" />
+        <MaterialIcons name="delete-outline" size={24} color="#E74C3C" />
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+        <CustomText style={styles.headerText}>Notifications</CustomText>
+      </LinearGradient>
       {notifications.length > 0 && (
-        <TouchableOpacity
-          style={styles.deleteAllButton}
+        <CustomButton
+          title="Delete All"
           onPress={() => {
             Alert.alert(
               'Delete All Notifications',
@@ -99,16 +106,17 @@ const NotificationsScreen = () => {
               ]
             );
           }}
-        >
-          <CustomText style={styles.deleteAllText}>Delete All</CustomText>
-        </TouchableOpacity>
+          buttonStyle={styles.deleteAllButton}
+          textStyle={styles.deleteAllText}
+        />
       )}
       <FlatList
         data={notifications}
         renderItem={renderNotification}
         keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#3498DB']} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -117,7 +125,7 @@ const NotificationsScreen = () => {
           </View>
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -125,7 +133,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ECF0F1',
+  },
+  header: {
     padding: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ECF0F1',
+  },
+  listContent: {
+    padding: 15,
   },
   notificationItem: {
     backgroundColor: '#FFFFFF',
@@ -171,10 +191,10 @@ const styles = StyleSheet.create({
   },
   deleteAllButton: {
     backgroundColor: '#E74C3C',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 20,
-    alignItems: 'center',
+    marginHorizontal: 15,
+    marginTop: 15,
+    marginBottom: 5,
+    borderRadius: 8,
   },
   deleteAllText: {
     color: '#FFFFFF',

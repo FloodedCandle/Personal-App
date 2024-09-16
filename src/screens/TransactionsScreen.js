@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, SafeAreaView } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
+import { MaterialIcons } from '@expo/vector-icons';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState([]);
@@ -23,6 +24,7 @@ const TransactionsScreen = () => {
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
+      Alert.alert('Error', 'Failed to fetch transactions. Please try again.');
     }
   }, []);
 
@@ -101,13 +103,18 @@ const TransactionsScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <CustomButton
-        title="Delete All Transactions"
-        onPress={confirmDeleteAll}
-        buttonStyle={styles.deleteAllButton}
-        textStyle={styles.deleteAllButtonText}
-      />
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+        <CustomText style={styles.headerText}>Transactions</CustomText>
+      </LinearGradient>
+      {transactions.length > 0 && (
+        <CustomButton
+          title="Delete All Transactions"
+          onPress={confirmDeleteAll}
+          buttonStyle={styles.deleteAllButton}
+          textStyle={styles.deleteAllButtonText}
+        />
+      )}
       <FlatList
         data={transactions}
         renderItem={renderTransaction}
@@ -115,9 +122,15 @@ const TransactionsScreen = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListEmptyComponent={<CustomText style={styles.emptyText}>No transactions</CustomText>}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="account-balance-wallet" size={64} color="#BDC3C7" />
+            <CustomText style={styles.emptyText}>No transactions</CustomText>
+          </View>
+        }
+        contentContainerStyle={styles.listContent}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -125,16 +138,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ECF0F1',
+  },
+  header: {
     padding: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ECF0F1',
+  },
+  listContent: {
+    padding: 15,
   },
   transactionItem: {
     backgroundColor: '#FFFFFF',
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 10,
     marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
   },
   transactionContent: {
     flex: 1,
@@ -157,6 +190,12 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 5,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
   emptyText: {
     textAlign: 'center',
     marginTop: 20,
@@ -165,10 +204,15 @@ const styles = StyleSheet.create({
   },
   deleteAllButton: {
     backgroundColor: '#E74C3C',
-    marginBottom: 20,
+    marginHorizontal: 15,
+    marginTop: 15,
+    marginBottom: 5,
+    borderRadius: 8,
   },
   deleteAllButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

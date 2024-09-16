@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl } from 'react-native';
-import { PieChart, StackedBarChart } from 'react-native-chart-kit';
+import { PieChart } from 'react-native-chart-kit';
 import CustomText from '../components/CustomText';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { useIsFocused } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getThemeColors } from '../config/chartThemes';
+
+const { width } = Dimensions.get('window');
 
 const StatisticsScreen = () => {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
+  const [chartTheme, setChartTheme] = useState('default');
 
   const fetchBudgets = useCallback(async () => {
     try {
@@ -42,8 +47,8 @@ const StatisticsScreen = () => {
     setRefreshing(false);
   }, [fetchBudgets]);
 
-  const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 32;
+  const chartWidth = width - 40;
+  const colors = getThemeColors(chartTheme);
 
   const chartConfig = {
     backgroundGradientFrom: '#ffffff',
@@ -66,30 +71,19 @@ const StatisticsScreen = () => {
     return Object.keys(categoryTotals).map((category, index) => ({
       name: category,
       population: categoryTotals[category],
-      color: `hsl(${(index * 137.5) % 360}, 70%, 50%)`,
+      color: colors[index % colors.length],
       legendFontColor: '#7F7F7F',
-      legendFontSize: 10,
+      legendFontSize: 12,
     }));
-  };
-
-  const getBudgetProgressData = () => {
-    const sortedBudgets = [...budgets].sort((a, b) => (b.amountSpent / b.goal) - (a.amountSpent / a.goal));
-    return {
-      labels: sortedBudgets.map(budget => budget.name.substring(0, 8)),
-      legend: ['Spent', 'Remaining'],
-      data: sortedBudgets.map(budget => [
-        budget.amountSpent || 0,
-        Math.max(0, budget.goal - (budget.amountSpent || 0))
-      ]),
-      barColors: ['#3498DB', '#E74C3C']
-    };
   };
 
   const getTotalStats = () => {
     const totalBudget = budgets.reduce((sum, budget) => sum + budget.goal, 0);
     const totalSpent = budgets.reduce((sum, budget) => sum + (budget.amountSpent || 0), 0);
     const totalRemaining = totalBudget - totalSpent;
-    return { totalBudget, totalSpent, totalRemaining };
+    const completedBudgets = budgets.filter(budget => budget.amountSpent >= budget.goal).length;
+    const activeBudgets = budgets.length - completedBudgets;
+    return { totalBudget, totalSpent, totalRemaining, completedBudgets, activeBudgets };
   };
 
   if (loading) {
@@ -100,11 +94,13 @@ const StatisticsScreen = () => {
     );
   }
 
-  const { totalBudget, totalSpent, totalRemaining } = getTotalStats();
-  const sortedBudgets = [...budgets].sort((a, b) => (b.amountSpent / b.goal) - (a.amountSpent / a.goal));
+  const { totalBudget, totalSpent, totalRemaining, completedBudgets, activeBudgets } = getTotalStats();
 
   return (
     <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+        <CustomText style={styles.headerText}>Statistics</CustomText>
+      </LinearGradient>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -117,58 +113,50 @@ const StatisticsScreen = () => {
       >
         <View style={styles.summaryContainer}>
           <CustomText style={styles.summaryTitle}>Budget Summary</CustomText>
-          <CustomText style={styles.summaryText}>Total Budget: ${totalBudget.toFixed(2)}</CustomText>
-          <CustomText style={styles.summaryText}>Total Spent: ${totalSpent.toFixed(2)}</CustomText>
-          <CustomText style={styles.summaryText}>Remaining: ${totalRemaining.toFixed(2)}</CustomText>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Total Budget</CustomText>
+              <CustomText style={styles.summaryValue}>${totalBudget.toFixed(2)}</CustomText>
+            </View>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Total Spent</CustomText>
+              <CustomText style={styles.summaryValue}>${totalSpent.toFixed(2)}</CustomText>
+            </View>
+          </View>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Remaining</CustomText>
+              <CustomText style={styles.summaryValue}>${totalRemaining.toFixed(2)}</CustomText>
+            </View>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Spent Percentage</CustomText>
+              <CustomText style={styles.summaryValue}>{((totalSpent / totalBudget) * 100).toFixed(1)}%</CustomText>
+            </View>
+          </View>
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Active Budgets</CustomText>
+              <CustomText style={styles.summaryValue}>{activeBudgets}</CustomText>
+            </View>
+            <View style={styles.summaryItem}>
+              <CustomText style={styles.summaryLabel}>Completed Budgets</CustomText>
+              <CustomText style={styles.summaryValue}>{completedBudgets}</CustomText>
+            </View>
+          </View>
         </View>
 
         <View style={styles.chartContainer}>
-          <CustomText style={styles.title}>Spending by Category</CustomText>
+          <CustomText style={styles.chartTitle}>Spending by Category</CustomText>
           <PieChart
             data={getCategoryData()}
             width={chartWidth}
-            height={200}
+            height={220}
             chartConfig={chartConfig}
             accessor="population"
             backgroundColor="transparent"
             paddingLeft="15"
             absolute
           />
-        </View>
-
-        <View style={styles.chartContainer}>
-          <CustomText style={styles.title}>Budget Progress</CustomText>
-          <StackedBarChart
-            data={getBudgetProgressData()}
-            width={chartWidth}
-            height={300}
-            chartConfig={chartConfig}
-            withHorizontalLabels={true}
-            segments={4}
-          />
-          <View style={styles.legendContainer}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#3498DB' }]} />
-              <CustomText style={styles.legendText}>Spent</CustomText>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: '#E74C3C' }]} />
-              <CustomText style={styles.legendText}>Remaining</CustomText>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.budgetProgressLegend}>
-          <CustomText style={styles.budgetProgressTitle}>Detailed Budget Progress</CustomText>
-          {sortedBudgets.map((budget, index) => (
-            <View key={index} style={styles.budgetProgressItem}>
-              <CustomText style={styles.budgetName}>{budget.name}</CustomText>
-              <CustomText style={styles.budgetProgress}>
-                ${budget.amountSpent.toFixed(2)} / ${budget.goal.toFixed(2)}
-                ({((budget.amountSpent / budget.goal) * 100).toFixed(1)}%)
-              </CustomText>
-            </View>
-          ))}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -178,91 +166,78 @@ const StatisticsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#ECF0F1',
+  },
+  header: {
+    padding: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ECF0F1',
   },
   scrollContent: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2C3E50',
+    padding: 20,
   },
   summaryContainer: {
-    backgroundColor: '#3498DB',
-    padding: 15,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
     borderRadius: 10,
     marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
   },
   summaryTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 10,
-  },
-  summaryText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 5,
-  },
-  chartContainer: {
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  legendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  legendColor: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
-    marginRight: 5,
-  },
-  legendText: {
-    fontSize: 14,
     color: '#2C3E50',
+    marginBottom: 15,
   },
-  budgetProgressLegend: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-  },
-  budgetProgressTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2C3E50',
-  },
-  budgetProgressItem: {
+  summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5,
+    marginBottom: 10,
   },
-  budgetName: {
-    fontSize: 14,
-    color: '#2C3E50',
+  summaryItem: {
     flex: 1,
   },
-  budgetProgress: {
+  summaryLabel: {
     fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 5,
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#2C3E50',
-    textAlign: 'right',
+  },
+  chartContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.23,
+    shadowRadius: 2.62,
+    elevation: 4,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 15,
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, Dimensions, RefreshControl, SafeAreaView } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import CustomText from '../components/CustomText';
 import { PieChart } from 'react-native-chart-kit';
@@ -7,6 +7,9 @@ import BudgetItem from '../components/BudgetItem';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { getThemeColors } from '../config/chartThemes';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width, height } = Dimensions.get('window');
 
 // Chart component to display budget overview
 const Chart = ({ categoryData, theme }) => {
@@ -152,20 +155,6 @@ const HomeScreen = ({ navigation }) => {
   // Render different components based on item type
   const renderItem = ({ item }) => {
     switch (item.type) {
-      case 'header':
-        return (
-          <View style={styles.topHeader}>
-            <CustomText style={styles.dashboardText}>Dashboard</CustomText>
-            <View style={styles.topIconsContainer}>
-              <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-                <MaterialIcons name="person-outline" size={24} color="#2C3E50" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Notification')}>
-                <Ionicons name="notifications-outline" size={24} color="#2C3E50" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
       case 'chart':
         return (
           <View style={styles.chartContainer}>
@@ -206,14 +195,26 @@ const HomeScreen = ({ navigation }) => {
 
   // Prepare data for FlatList
   const data = [
-    { type: 'header', id: 'header' },
     { type: 'chart', id: 'chart' },
     { type: 'budgetHeader', id: 'budgetHeader' },
     ...budgets.map(budget => ({ type: 'budget', id: budget.id, ...budget }))
   ];
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+        <View style={styles.headerContent}>
+          <CustomText style={styles.headerText}>Dashboard</CustomText>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')} style={styles.iconButton}>
+              <MaterialIcons name="person-outline" size={24} color="#ECF0F1" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate('Notification')} style={styles.iconButton}>
+              <Ionicons name="notifications-outline" size={24} color="#ECF0F1" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </LinearGradient>
       <FlatList
         data={data}
         renderItem={renderItem}
@@ -223,88 +224,83 @@ const HomeScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#2C3E50']}
+            colors={['#2ECC71']}
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    flex: 1,
     backgroundColor: '#ECF0F1',
-    padding: 20,
   },
-  topHeader: {
+  header: {
+    paddingTop: 40,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
   },
-  dashboardText: {
-    fontSize: 20,
-    color: '#2C3E50',
+  headerText: {
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#ECF0F1',
   },
-  topIconsContainer: {
+  headerIcons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: 60,
+  },
+  iconButton: {
+    marginLeft: 15,
+  },
+  listContent: {
+    paddingHorizontal: 15,
+    paddingBottom: 20,
   },
   chartContainer: {
-    marginTop: 10,
-    padding: 10,
-    alignItems: 'center',
-    backgroundColor: '#ECF0F1',
-    borderRadius: 14,
-    shadowColor: '#2C3E50',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 15,
+    marginVertical: 10,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   chartTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2C3E50',
-    marginBottom: 10,
   },
   budgetsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 20,
-    marginBottom: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#2C3E50',
-    borderRadius: 8,
-    height: 50,
+    alignItems: 'center',
+    marginVertical: 15,
   },
   budgetsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ECF0F1',
+    color: '#2C3E50',
   },
   addButton: {
     backgroundColor: '#2ECC71',
     padding: 8,
-    borderRadius: 8,
-  },
-  budgetList: {
-    flex: 1,
-    width: '100%',
-  },
-  budgetListContent: {
-    paddingHorizontal: 15,
-    paddingBottom: 20,
-  },
-  budgetSeparator: {
-    height: 10,
-  },
-  listContent: {
-    paddingBottom: 20,
+    borderRadius: 20,
   },
   emptyContainer: {
     flex: 1,
@@ -318,17 +314,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyChartContainer: {
-    height: 220,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
     borderRadius: 8,
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
   },
 });
 
