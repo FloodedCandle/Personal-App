@@ -135,12 +135,14 @@ const BudgetDetailScreen = ({ navigation }) => {
                 createdAt: new Date().toISOString()
             };
 
-            if (isOfflineMode) {
-                const storedNotifications = await AsyncStorage.getItem('notifications');
-                const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
-                notifications.push(newNotification);
-                await AsyncStorage.setItem('notifications', JSON.stringify(notifications));
-            } else {
+            const storageKey = isOfflineMode ? 'offlineNotifications' : 'notifications';
+            const storedNotifications = await AsyncStorage.getItem(storageKey);
+            const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+            notifications.push(newNotification);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(notifications));
+
+            if (!isOfflineMode) {
+                // Add to Firestore if online
                 const userId = auth.currentUser.uid;
                 const notificationsRef = doc(db, 'notifications', userId);
                 await updateDoc(notificationsRef, {

@@ -6,13 +6,21 @@ import { auth, db } from '../config/firebaseConfig';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/userSlice';
 
 const SignupScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const dispatch = useDispatch();
 
   const handleSignUp = async () => {
+    if (!username || !email || !password) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -20,21 +28,43 @@ const SignupScreen = ({ navigation }) => {
       // Update the user's profile with the username
       await updateProfile(user, { displayName: username });
 
-      // Store additional user info in Firestore
+      // Initialize user data in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         username: username,
         email: email,
         createdAt: new Date()
       });
 
-      // Store the email for auto-fill in login screen
-      await AsyncStorage.setItem('userEmail', email);
+      // Initialize empty budgets, transactions, and notifications for the new user
+      await setDoc(doc(db, 'userBudgets', user.uid), { budgets: [] });
+      await setDoc(doc(db, 'transactions', user.uid), { transactions: [] });
+      await setDoc(doc(db, 'notifications', user.uid), { notifications: [] });
+
+      // Set user in Redux
+      dispatch(setUser({
+        uid: user.uid,
+        email: user.email,
+        displayName: username,
+        photoURL: user.photoURL,
+        emailVerified: user.emailVerified,
+      }));
+
+      // Switch to online mode
+      await AsyncStorage.setItem('offlineMode', 'false');
+
+      // Clear any existing local data
+      await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
 
       console.log('User signed up:', user);
       Alert.alert(
         "Account Created",
-        "Your account has been successfully created. Please log in.",
-        [{ text: "OK", onPress: () => navigation.navigate('Login') }]
+        "Your account has been successfully created.",
+        [{
+          text: "OK", onPress: () => navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainApp' }],
+          })
+        }]
       );
     } catch (error) {
       console.error('Error signing up:', error.message);

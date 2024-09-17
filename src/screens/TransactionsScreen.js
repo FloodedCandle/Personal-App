@@ -3,33 +3,46 @@ import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, Sa
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db, auth } from '../config/firebaseConfig';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
-const TransactionsScreen = ({ route }) => {
+const TransactionsScreen = () => {
   const [transactions, setTransactions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const isOfflineMode = route.params?.offlineMode || false;
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  const fetchTransactions = useCallback(async () => {
+  useFocusEffect(
+    useCallback(() => {
+      checkOfflineMode();
+      fetchTransactions();
+    }, [])
+  );
+
+  const checkOfflineMode = async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  };
+
+  const fetchTransactions = async () => {
     try {
-      const storedTransactions = await AsyncStorage.getItem('transactions');
-      if (storedTransactions) {
-        setTransactions(JSON.parse(storedTransactions));
-      }
-
-      if (!isOfflineMode) {
+      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
+      if (isOfflineMode) {
+        const storedTransactions = await AsyncStorage.getItem(storageKey);
+        if (storedTransactions) {
+          setTransactions(JSON.parse(storedTransactions));
+        }
+      } else {
         const userId = auth.currentUser?.uid;
         if (userId) {
           const transactionsRef = doc(db, 'transactions', userId);
           const docSnap = await getDoc(transactionsRef);
           if (docSnap.exists()) {
             const transactionsData = docSnap.data().transactions || [];
-            setTransactions(transactionsData.sort((a, b) => b.date.toDate() - a.date.toDate()));
-            await AsyncStorage.setItem('transactions', JSON.stringify(transactionsData));
+            setTransactions(transactionsData);
+            await AsyncStorage.setItem(storageKey, JSON.stringify(transactionsData));
           }
         }
       }
@@ -37,11 +50,7 @@ const TransactionsScreen = ({ route }) => {
       console.error('Error fetching transactions:', error);
       Alert.alert('Error', 'Failed to fetch transactions. Please try again.');
     }
-  }, [isOfflineMode]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -51,38 +60,40 @@ const TransactionsScreen = ({ route }) => {
 
   const deleteTransaction = useCallback(async (transactionId) => {
     try {
-      const storedTransactions = await AsyncStorage.getItem('transactions');
-      if (storedTransactions) {
-        const parsedTransactions = JSON.parse(storedTransactions);
-        const updatedTransactions = parsedTransactions.filter(t => t.id !== transactionId);
-        await AsyncStorage.setItem('transactions', JSON.stringify(updatedTransactions));
+      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
+      const updatedTransactions = transactions.filter(t => t.id !== transactionId);
 
-        if (!isOfflineMode) {
-          const userId = auth.currentUser.uid;
-          const transactionsRef = doc(db, 'transactions', userId);
-          await updateDoc(transactionsRef, { transactions: updatedTransactions });
-        }
-
-        setTransactions(updatedTransactions);
-        Alert.alert('Success', 'Transaction deleted successfully');
+      if (isOfflineMode) {
+        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedTransactions));
+      } else {
+        const userId = auth.currentUser.uid;
+        const transactionsRef = doc(db, 'transactions', userId);
+        await updateDoc(transactionsRef, { transactions: updatedTransactions });
+        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedTransactions));
       }
+
+      setTransactions(updatedTransactions);
+      Alert.alert('Success', 'Transaction deleted successfully');
     } catch (error) {
       console.error('Error deleting transaction:', error);
       Alert.alert('Error', 'Failed to delete transaction');
     }
-  }, [isOfflineMode]);
+  }, [isOfflineMode, transactions]);
 
   const deleteAllTransactions = useCallback(async () => {
     try {
-      await AsyncStorage.setItem('transactions', JSON.stringify([]));
-      setTransactions([]);
+      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
 
-      if (!isOfflineMode && auth.currentUser) {
+      if (isOfflineMode) {
+        await AsyncStorage.setItem(storageKey, JSON.stringify([]));
+      } else {
         const userId = auth.currentUser.uid;
         const transactionsRef = doc(db, 'transactions', userId);
         await updateDoc(transactionsRef, { transactions: [] });
+        await AsyncStorage.setItem(storageKey, JSON.stringify([]));
       }
 
+      setTransactions([]);
       Alert.alert('Success', 'All transactions deleted successfully');
     } catch (error) {
       console.error('Error deleting all transactions:', error);
@@ -90,49 +101,16 @@ const TransactionsScreen = ({ route }) => {
     }
   }, [isOfflineMode]);
 
-  const confirmDelete = useCallback((transactionId) => {
-    Alert.alert(
-      'Delete Transaction',
-      'Are you sure you want to delete this transaction?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', onPress: () => deleteTransaction(transactionId) }
-      ]
-    );
-  }, [deleteTransaction]);
-
-  const confirmDeleteAll = useCallback(() => {
-    Alert.alert(
-      'Delete All Transactions',
-      'Are you sure you want to delete all transactions? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete All', onPress: deleteAllTransactions }
-      ]
-    );
-  }, [deleteAllTransactions]);
-
-  const formatDate = (date) => {
-    if (date instanceof Date) {
-      return date.toLocaleString();
-    } else if (date && typeof date.toDate === 'function') {
-      return date.toDate().toLocaleString();
-    } else if (typeof date === 'string') {
-      return new Date(date).toLocaleString();
-    }
-    return 'Invalid Date';
-  };
-
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
       <View style={styles.transactionContent}>
         <CustomText style={styles.transactionBudget}>{item.budgetName}</CustomText>
         <CustomText style={styles.transactionAmount}>${item.amount.toFixed(2)}</CustomText>
         <CustomText style={styles.transactionDate}>
-          {formatDate(item.date)}
+          {new Date(item.date).toLocaleString()}
         </CustomText>
       </View>
-      <TouchableOpacity onPress={() => confirmDelete(item.id)} style={styles.deleteButton}>
+      <TouchableOpacity onPress={() => deleteTransaction(item.id)} style={styles.deleteButton}>
         <MaterialIcons name="delete" size={24} color="#E74C3C" />
       </TouchableOpacity>
     </View>
@@ -146,7 +124,16 @@ const TransactionsScreen = ({ route }) => {
       {transactions.length > 0 && (
         <CustomButton
           title="Delete All Transactions"
-          onPress={confirmDeleteAll}
+          onPress={() => {
+            Alert.alert(
+              'Delete All Transactions',
+              'Are you sure you want to delete all transactions?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete All', onPress: deleteAllTransactions }
+              ]
+            );
+          }}
           buttonStyle={styles.deleteAllButton}
           textStyle={styles.deleteAllButtonText}
         />

@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { clearUser } from '../redux/userSlice';
 import { useFocusEffect } from '@react-navigation/native';
+import { clearUserData } from '../utils/userDataUtils';
 
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -101,7 +102,7 @@ const ProfileScreen = ({ navigation }) => {
             try {
               await logout();
               dispatch(clearUser());
-              await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
+              await clearUserData(); // Clear user data
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'GetStarted' }],

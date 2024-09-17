@@ -2,48 +2,36 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import CustomText from '../components/CustomText';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getThemeColors } from '../config/chartThemes';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
-const StatisticsScreen = ({ route }) => {
+const StatisticsScreen = () => {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isFocused = useIsFocused();
-  const isOfflineMode = route.params?.offlineMode || false;
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [chartTheme, setChartTheme] = useState('default');
 
   const fetchBudgets = useCallback(async () => {
     try {
-      if (isOfflineMode) {
-        const storedBudgets = await AsyncStorage.getItem('budgets');
-        if (storedBudgets) {
-          setBudgets(JSON.parse(storedBudgets));
-        }
-      } else {
-        const userId = auth.currentUser?.uid;
-        if (userId) {
-          const userBudgetsRef = doc(db, 'userBudgets', userId);
-          const docSnap = await getDoc(userBudgetsRef);
-          if (docSnap.exists()) {
-            const budgetData = docSnap.data().budgets || [];
-            setBudgets(budgetData);
-            await AsyncStorage.setItem('budgets', JSON.stringify(budgetData));
-          }
-        }
+      const offlineMode = await AsyncStorage.getItem('offlineMode');
+      setIsOfflineMode(offlineMode === 'true');
+      const storageKey = offlineMode === 'true' ? 'offlineBudgets' : 'budgets';
+      const storedBudgets = await AsyncStorage.getItem(storageKey);
+      if (storedBudgets) {
+        setBudgets(JSON.parse(storedBudgets));
       }
       setLoading(false);
     } catch (error) {
       console.error('Error fetching budgets:', error);
       setLoading(false);
     }
-  }, [isOfflineMode]);
+  }, []);
 
   const loadChartTheme = async () => {
     try {

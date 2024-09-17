@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TextInput, Alert, Switch, TouchableOpacity } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { db, auth } from '../config/firebaseConfig';
+import { doc, updateDoc, arrayUnion, getDoc, setDoc } from 'firebase/firestore';
+import { useDispatch } from 'react-redux';
+import { addBudget } from '../redux/budgetSlice';
 
 const categories = [
     { name: 'Food', icon: 'restaurant' },
@@ -23,6 +26,17 @@ const CreateBudgetScreen = ({ navigation }) => {
     const [category, setCategory] = useState(categories[0]);
     const [notificationsEnabled, setNotificationsEnabled] = useState(false);
     const [reminderFrequency, setReminderFrequency] = useState('weekly');
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
+    const dispatch = useDispatch();
+
+    useEffect(() => {
+        checkOfflineMode();
+    }, []);
+
+    const checkOfflineMode = async () => {
+        const offlineMode = await AsyncStorage.getItem('offlineMode');
+        setIsOfflineMode(offlineMode === 'true');
+    };
 
     const handleCreateBudget = async () => {
         if (!name || !goal || !category) {
@@ -31,9 +45,6 @@ const CreateBudgetScreen = ({ navigation }) => {
         }
 
         try {
-            const userId = auth.currentUser.uid;
-            const userBudgetsRef = doc(db, 'userBudgets', userId);
-
             const newBudget = {
                 id: Date.now().toString(),
                 name,
@@ -51,16 +62,36 @@ const CreateBudgetScreen = ({ navigation }) => {
 
             console.log('Creating new budget:', newBudget);
 
-            const docSnap = await getDoc(userBudgetsRef);
-            if (docSnap.exists()) {
-                await updateDoc(userBudgetsRef, {
-                    budgets: arrayUnion(newBudget)
-                });
+            if (isOfflineMode) {
+                const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+                let updatedBudgets = storedBudgets ? JSON.parse(storedBudgets) : [];
+                updatedBudgets.push(newBudget);
+                await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
             } else {
-                await updateDoc(userBudgetsRef, {
-                    budgets: [newBudget]
-                });
+                const userId = auth.currentUser.uid;
+                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                const docSnap = await getDoc(userBudgetsRef);
+
+                if (docSnap.exists()) {
+                    await updateDoc(userBudgetsRef, {
+                        budgets: arrayUnion(newBudget)
+                    });
+                } else {
+                    // If the document doesn't exist, create it with the new budget
+                    await setDoc(userBudgetsRef, {
+                        budgets: [newBudget]
+                    });
+                }
+
+                // Update local storage for online mode as well
+                const storedBudgets = await AsyncStorage.getItem('budgets');
+                let updatedBudgets = storedBudgets ? JSON.parse(storedBudgets) : [];
+                updatedBudgets.push(newBudget);
+                await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
             }
+
+            // Update Redux store
+            dispatch(addBudget(newBudget));
 
             Alert.alert('Success', 'Budget created successfully');
             navigation.goBack();

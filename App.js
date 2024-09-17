@@ -12,7 +12,6 @@ import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
 import EditBudgetScreen from './src/screens/EditBudgetScreen';
-// ... other imports
 
 const Stack = createStackNavigator();
 
@@ -51,7 +50,6 @@ const App = () => {
               name="BudgetDetail"
               component={BudgetDetailScreen}
               options={{ title: 'Budget Details' }}
-              initialParams={{ offlineMode: true }} // Add this line
             />
             <Stack.Screen
               name="CreateBudget"
@@ -63,7 +61,6 @@ const App = () => {
               component={EditBudgetScreen}
               options={{ title: 'Edit Budget' }}
             />
-            {/* ... other screens */}
           </Stack.Navigator>
         </NavigationContainer>
       </GestureHandlerRootView>

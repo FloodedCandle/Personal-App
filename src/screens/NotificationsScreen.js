@@ -3,51 +3,39 @@ import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert, Sa
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc, arrayRemove } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const NotificationsScreen = ({ route }) => {
+const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const isOfflineMode = route.params?.offlineMode || false;
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkOfflineMode();
+      fetchNotifications();
+    }, [])
+  );
+
+  const checkOfflineMode = async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  };
 
   const fetchNotifications = useCallback(async () => {
     try {
-      if (isOfflineMode) {
-        const storedNotifications = await AsyncStorage.getItem('notifications');
-        if (storedNotifications) {
-          setNotifications(JSON.parse(storedNotifications));
-        }
-      } else {
-        const userId = auth.currentUser?.uid;
-        if (userId) {
-          const notificationsRef = doc(db, 'notifications', userId);
-          const docSnap = await getDoc(notificationsRef);
-          if (docSnap.exists()) {
-            const notificationsData = docSnap.data().notifications || [];
-            setNotifications(notificationsData.sort((a, b) => {
-              const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
-              const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
-              return dateB - dateA;
-            }));
-            await AsyncStorage.setItem('notifications', JSON.stringify(notificationsData));
-          }
-        }
+      const storageKey = isOfflineMode ? 'offlineNotifications' : 'notifications';
+      const storedNotifications = await AsyncStorage.getItem(storageKey);
+      if (storedNotifications) {
+        setNotifications(JSON.parse(storedNotifications));
       }
     } catch (error) {
       console.error('Error fetching notifications: ', error);
       Alert.alert('Error', 'Failed to fetch notifications. Please try again.');
     }
   }, [isOfflineMode]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchNotifications();
-    }, [fetchNotifications])
-  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -57,36 +45,20 @@ const NotificationsScreen = ({ route }) => {
 
   const deleteNotification = useCallback(async (notification) => {
     try {
-      if (isOfflineMode) {
-        const storedNotifications = await AsyncStorage.getItem('notifications');
-        if (storedNotifications) {
-          const updatedNotifications = JSON.parse(storedNotifications).filter(n => n.id !== notification.id);
-          await AsyncStorage.setItem('notifications', JSON.stringify(updatedNotifications));
-          setNotifications(updatedNotifications);
-        }
-      } else {
-        const userId = auth.currentUser.uid;
-        const notificationsRef = doc(db, 'notifications', userId);
-        await updateDoc(notificationsRef, {
-          notifications: arrayRemove(notification)
-        });
-      }
-      await fetchNotifications(); // Refresh the list
+      const storageKey = isOfflineMode ? 'offlineNotifications' : 'notifications';
+      const updatedNotifications = notifications.filter(n => n.id !== notification.id);
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updatedNotifications));
+      setNotifications(updatedNotifications);
     } catch (error) {
       console.error('Error deleting notification:', error);
       Alert.alert('Error', 'Failed to delete notification. Please try again.');
     }
-  }, [fetchNotifications, isOfflineMode]);
+  }, [isOfflineMode, notifications]);
 
   const deleteAllNotifications = useCallback(async () => {
     try {
-      if (isOfflineMode) {
-        await AsyncStorage.setItem('notifications', JSON.stringify([]));
-      } else {
-        const userId = auth.currentUser.uid;
-        const notificationsRef = doc(db, 'notifications', userId);
-        await updateDoc(notificationsRef, { notifications: [] });
-      }
+      const storageKey = isOfflineMode ? 'offlineNotifications' : 'notifications';
+      await AsyncStorage.setItem(storageKey, JSON.stringify([]));
       setNotifications([]);
       Alert.alert('Success', 'All notifications deleted successfully');
     } catch (error) {
@@ -113,10 +85,10 @@ const NotificationsScreen = ({ route }) => {
   );
 
   const formatDate = (dateValue) => {
-    if (dateValue?.toDate) {
-      return dateValue.toDate().toLocaleString();
-    } else if (typeof dateValue === 'string') {
+    if (typeof dateValue === 'string') {
       return new Date(dateValue).toLocaleString();
+    } else if (dateValue?.toDate) {
+      return dateValue.toDate().toLocaleString();
     }
     return 'Invalid Date';
   };

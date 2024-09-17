@@ -1,52 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, Alert, SectionList } from 'react-native';
 import CustomText from '../components/CustomText';
 import CustomButton from '../components/CustomButton';
 import { MaterialIcons } from '@expo/vector-icons';
-import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import BudgetItem from '../components/BudgetItem';
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
-const BudgetScreen = ({ route }) => {
+const BudgetScreen = () => {
   const [budgets, setBudgets] = useState({ active: [], completed: [] });
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const navigation = useNavigation();
-  const isOfflineMode = route.params?.offlineMode || false;
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  useFocusEffect(
+    useCallback(() => {
+      checkOfflineMode();
       fetchBudgets();
-    });
+    }, [])
+  );
 
-    return unsubscribe;
-  }, [navigation]);
+  const checkOfflineMode = async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  };
 
   const fetchBudgets = async () => {
     try {
-      const storedBudgets = await AsyncStorage.getItem('budgets');
+      const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
+      const storedBudgets = await AsyncStorage.getItem(storageKey);
       if (storedBudgets) {
         const parsedBudgets = JSON.parse(storedBudgets);
         const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
         const completedBudgets = parsedBudgets.filter(budget => budget.amountSpent >= budget.goal);
         setBudgets({ active: activeBudgets, completed: completedBudgets });
-      }
-
-      if (!isOfflineMode) {
-        const userId = auth.currentUser?.uid;
-        if (userId) {
-          const userBudgetsRef = doc(db, 'userBudgets', userId);
-          const docSnap = await getDoc(userBudgetsRef);
-          if (docSnap.exists()) {
-            const userBudgets = docSnap.data().budgets || [];
-            const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-            const completedBudgets = userBudgets.filter(budget => budget.amountSpent >= budget.goal);
-            setBudgets({ active: activeBudgets, completed: completedBudgets });
-            await AsyncStorage.setItem('budgets', JSON.stringify(userBudgets));
-          }
-        }
       }
     } catch (error) {
       console.error('Error fetching budgets: ', error);
@@ -68,11 +57,12 @@ const BudgetScreen = ({ route }) => {
           text: "Delete",
           onPress: async () => {
             try {
-              const storedBudgets = await AsyncStorage.getItem('budgets');
+              const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
+              const storedBudgets = await AsyncStorage.getItem(storageKey);
               if (storedBudgets) {
                 const parsedBudgets = JSON.parse(storedBudgets);
                 const updatedBudgets = parsedBudgets.filter(b => b.id !== budget.id);
-                await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
+                await AsyncStorage.setItem(storageKey, JSON.stringify(updatedBudgets));
 
                 if (!isOfflineMode) {
                   const userId = auth.currentUser.uid;
@@ -102,7 +92,8 @@ const BudgetScreen = ({ route }) => {
           text: "Clear",
           onPress: async () => {
             try {
-              const storedBudgets = await AsyncStorage.getItem('budgets');
+              const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
+              const storedBudgets = await AsyncStorage.getItem(storageKey);
               if (storedBudgets) {
                 const parsedBudgets = JSON.parse(storedBudgets);
                 let updatedBudgets;
@@ -111,7 +102,7 @@ const BudgetScreen = ({ route }) => {
                 } else if (type === 'Completed') {
                   updatedBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
                 }
-                await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
+                await AsyncStorage.setItem(storageKey, JSON.stringify(updatedBudgets));
 
                 if (!isOfflineMode && auth.currentUser) {
                   const userId = auth.currentUser.uid;

@@ -8,6 +8,7 @@ import { auth } from '../config/firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
+import { clearUserData, loadUserData } from '../utils/userDataUtils'; // We'll create this utility file
 
 const { width, height } = Dimensions.get('window');
 const logo = require('../assets/logo.png');
@@ -41,6 +42,11 @@ const LoginScreen = ({ navigation, route }) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
+      // Clear any existing data
+      await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
+
+      // Set user in Redux
       dispatch(setUser({
         uid: user.uid,
         email: user.email,
@@ -55,6 +61,9 @@ const LoginScreen = ({ navigation, route }) => {
       }
 
       await AsyncStorage.setItem('offlineMode', 'false');
+
+      // Load user data
+      await loadUserData(user.uid);
 
       if (isSwitch) {
         navigation.reset({
