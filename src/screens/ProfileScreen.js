@@ -10,28 +10,57 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { clearUser } from '../redux/userSlice';
+import { useFocusEffect } from '@react-navigation/native';
 
 const ProfileScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedUsername, setEditedUsername] = useState('');
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   const dispatch = useDispatch();
 
   useEffect(() => {
+    checkOfflineMode();
     fetchUserData();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      checkOfflineMode();
+      fetchUserData();
+    }, [])
+  );
+
+  const checkOfflineMode = async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  };
+
   const fetchUserData = async () => {
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-      if (userDoc.exists()) {
-        setUser({ ...currentUser, ...userDoc.data() });
-        setEditedUsername(userDoc.data().username || currentUser.displayName);
+    if (isOfflineMode) {
+      const offlineUser = await AsyncStorage.getItem('offlineUser');
+      if (offlineUser) {
+        setUser(JSON.parse(offlineUser));
+        setEditedUsername(JSON.parse(offlineUser).username);
       } else {
-        setUser(currentUser);
-        setEditedUsername(currentUser.displayName);
+        // If no offline user exists, create a default one
+        const defaultUser = { username: 'Offline User', createdAt: new Date().toISOString() };
+        await AsyncStorage.setItem('offlineUser', JSON.stringify(defaultUser));
+        setUser(defaultUser);
+        setEditedUsername(defaultUser.username);
+      }
+    } else {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (userDoc.exists()) {
+          setUser({ ...currentUser, ...userDoc.data() });
+          setEditedUsername(userDoc.data().username || currentUser.displayName);
+        } else {
+          setUser(currentUser);
+          setEditedUsername(currentUser.displayName);
+        }
       }
     }
   };
@@ -42,9 +71,15 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleSave = async () => {
     try {
-      const currentUser = auth.currentUser;
-      await updateProfile(currentUser, { displayName: editedUsername });
-      await updateDoc(doc(db, 'users', currentUser.uid), { username: editedUsername });
+      if (isOfflineMode) {
+        const updatedUser = { ...user, username: editedUsername };
+        await AsyncStorage.setItem('offlineUser', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      } else {
+        const currentUser = auth.currentUser;
+        await updateProfile(currentUser, { displayName: editedUsername });
+        await updateDoc(doc(db, 'users', currentUser.uid), { username: editedUsername });
+      }
       setIsEditing(false);
       fetchUserData();
       Alert.alert('Success', 'Profile updated successfully');
@@ -66,9 +101,7 @@ const ProfileScreen = ({ navigation }) => {
             try {
               await logout();
               dispatch(clearUser());
-              // Clear local storage
               await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
-              // Navigate to GetStarted screen
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'GetStarted' }],
@@ -104,15 +137,7 @@ const ProfileScreen = ({ navigation }) => {
               });
             } catch (error) {
               console.error('Error deleting account:', error);
-              if (error.message === 'No user logged in') {
-                Alert.alert('Error', 'You are not logged in. Please log in and try again.');
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                });
-              } else {
-                Alert.alert('Error', 'Failed to delete account. Please try again later.');
-              }
+              Alert.alert('Error', 'Failed to delete account. Please try again later.');
             }
           }
         }
@@ -120,13 +145,30 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  const handleLogin = () => {
+    navigation.navigate('Login');
+  };
+
+  const handleBackToGetStarted = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'GetStarted' }],
+    });
+  };
+
+  const handleSwitchToOnlineMode = () => {
+    navigation.navigate('Login', { isSwitch: true });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
         <CustomText style={styles.headerText}>Profile</CustomText>
-        <TouchableOpacity onPress={isEditing ? handleSave : handleEdit} style={styles.editButton}>
-          <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#ECF0F1" />
-        </TouchableOpacity>
+        {!isOfflineMode && (
+          <TouchableOpacity onPress={isEditing ? handleSave : handleEdit} style={styles.editButton}>
+            <MaterialIcons name={isEditing ? "save" : "edit"} size={24} color="#ECF0F1" />
+          </TouchableOpacity>
+        )}
       </LinearGradient>
       <ScrollView style={styles.content}>
         <View style={styles.profileInfo}>
@@ -143,31 +185,57 @@ const ProfileScreen = ({ navigation }) => {
           ) : (
             <CustomText style={styles.name}>{user?.username || user?.displayName || 'User Name'}</CustomText>
           )}
-          <CustomText style={styles.email}>{user?.email}</CustomText>
+          {!isOfflineMode && <CustomText style={styles.email}>{user?.email}</CustomText>}
         </View>
 
-        <View style={styles.infoContainer}>
-          <View style={styles.infoItem}>
-            <MaterialIcons name="date-range" size={24} color="#3498DB" />
-            <CustomText style={styles.infoText}>Joined: {user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}</CustomText>
+        {!isOfflineMode && (
+          <View style={styles.infoContainer}>
+            <View style={styles.infoItem}>
+              <MaterialIcons name="date-range" size={24} color="#3498DB" />
+              <CustomText style={styles.infoText}>Joined: {user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}</CustomText>
+            </View>
           </View>
-          {/* Add more user info items here if needed */}
-        </View>
+        )}
+
+        {isOfflineMode && (
+          <View style={styles.offlineInfoContainer}>
+            <CustomText style={styles.offlineInfoText}>You are currently in offline mode.</CustomText>
+            <CustomText style={styles.offlineInfoText}>Some features may be limited.</CustomText>
+          </View>
+        )}
 
         <View style={styles.buttonContainer}>
-          <CustomButton
-            title="Logout"
-            onPress={handleLogout}
-            buttonStyle={styles.logoutButton}
-            textStyle={styles.buttonText}
-          />
-
-          <CustomButton
-            title="Delete Account"
-            onPress={handleDeleteAccount}
-            buttonStyle={styles.deleteButton}
-            textStyle={styles.buttonText}
-          />
+          {isOfflineMode ? (
+            <>
+              <CustomButton
+                title="Switch to Online Mode"
+                onPress={handleSwitchToOnlineMode}
+                buttonStyle={styles.loginButton}
+                textStyle={styles.buttonText}
+              />
+              <CustomButton
+                title="Back to Get Started"
+                onPress={handleBackToGetStarted}
+                buttonStyle={styles.backButton}
+                textStyle={styles.buttonText}
+              />
+            </>
+          ) : (
+            <>
+              <CustomButton
+                title="Logout"
+                onPress={handleLogout}
+                buttonStyle={styles.logoutButton}
+                textStyle={styles.buttonText}
+              />
+              <CustomButton
+                title="Delete Account"
+                onPress={handleDeleteAccount}
+                buttonStyle={styles.deleteButton}
+                textStyle={styles.buttonText}
+              />
+            </>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -263,10 +331,29 @@ const styles = StyleSheet.create({
   deleteButton: {
     backgroundColor: '#C0392B',
   },
+  loginButton: {
+    backgroundColor: '#2ECC71',
+    marginBottom: 15,
+  },
+  backButton: {
+    backgroundColor: '#3498DB',
+  },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  offlineInfoContainer: {
+    backgroundColor: '#F39C12',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 20,
+  },
+  offlineInfoText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 5,
   },
 });
 

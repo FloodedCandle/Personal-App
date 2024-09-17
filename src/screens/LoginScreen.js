@@ -12,15 +12,17 @@ import { MaterialIcons } from '@expo/vector-icons';
 const { width, height } = Dimensions.get('window');
 const logo = require('../assets/logo.png');
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [savedAccounts, setSavedAccounts] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isSwitch, setIsSwitch] = useState(false);
   const dispatch = useDispatch();
 
   useEffect(() => {
+    setIsSwitch(route.params?.isSwitch || false);
     const getStoredAccounts = async () => {
       try {
         const accounts = await AsyncStorage.getItem('savedAccounts');
@@ -33,7 +35,7 @@ const LoginScreen = ({ navigation }) => {
     };
 
     getStoredAccounts();
-  }, []);
+  }, [route.params]);
 
   const handleLogin = async () => {
     try {
@@ -53,7 +55,15 @@ const LoginScreen = ({ navigation }) => {
       }
 
       await AsyncStorage.setItem('offlineMode', 'false');
-      navigation.navigate('MainApp');
+
+      if (isSwitch) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainApp' }],
+        });
+      } else {
+        navigation.navigate('MainApp');
+      }
     } catch (error) {
       console.error('Error logging in:', error.message);
       Alert.alert('Login Error', error.message);
