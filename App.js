@@ -11,6 +11,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
+import EditBudgetScreen from './src/screens/EditBudgetScreen';
 // ... other imports
 
 const Stack = createStackNavigator();
@@ -56,6 +57,11 @@ const App = () => {
               name="CreateBudget"
               component={CreateBudgetScreen}
               options={{ title: 'Create Budget' }}
+            />
+            <Stack.Screen
+              name="EditBudget"
+              component={EditBudgetScreen}
+              options={{ title: 'Edit Budget' }}
             />
             {/* ... other screens */}
           </Stack.Navigator>

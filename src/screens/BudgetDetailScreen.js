@@ -7,10 +7,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import { setBudgets } from '../redux/budgetSlice';
 import { useRoute } from '@react-navigation/native';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../config/firebaseConfig';
 
 const BudgetDetailScreen = ({ navigation }) => {
     const route = useRoute();
-    const budget = route.params.budget;
+    const [budget, setBudget] = useState(route.params.budget);
     const [amount, setAmount] = useState('');
     const [isAddingFunds, setIsAddingFunds] = useState(false);
     const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -87,6 +89,16 @@ const BudgetDetailScreen = ({ navigation }) => {
                 const updatedBudgets = budgets.map(b => b.id === updatedBudget.id ? updatedBudget : b);
                 await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
             } else {
+                const userId = auth.currentUser.uid;
+                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                const docSnap = await getDoc(userBudgetsRef);
+                if (docSnap.exists()) {
+                    const userBudgets = docSnap.data().budgets || [];
+                    const updatedBudgets = userBudgets.map(b => b.id === updatedBudget.id ? updatedBudget : b);
+                    await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+                }
+
+                // Update local storage
                 const storedBudgets = await AsyncStorage.getItem('budgets');
                 if (storedBudgets) {
                     const budgets = JSON.parse(storedBudgets);
@@ -95,6 +107,8 @@ const BudgetDetailScreen = ({ navigation }) => {
                 }
             }
 
+            // Update local state
+            setBudget(updatedBudget);
             dispatch(setBudgets([updatedBudget]));
             setAmount('');
             Alert.alert('Success', 'Funds added successfully');
@@ -131,7 +145,13 @@ const BudgetDetailScreen = ({ navigation }) => {
     };
 
     const handleEdit = () => {
-        navigation.navigate('EditBudget', { budget });
+        navigation.navigate('EditBudget', {
+            budget: budget,
+            onBudgetUpdate: (updatedBudget) => {
+                setBudget(updatedBudget);
+                dispatch(setBudgets([updatedBudget]));
+            }
+        });
     };
 
     const handleDelete = async () => {
@@ -153,6 +173,16 @@ const BudgetDetailScreen = ({ navigation }) => {
                                     await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
                                 }
                             } else {
+                                const userId = auth.currentUser.uid;
+                                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                                const docSnap = await getDoc(userBudgetsRef);
+                                if (docSnap.exists()) {
+                                    const userBudgets = docSnap.data().budgets || [];
+                                    const updatedBudgets = userBudgets.filter(b => b.id !== budget.id);
+                                    await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+                                }
+
+                                // Update local storage
                                 const storedBudgets = await AsyncStorage.getItem('budgets');
                                 if (storedBudgets) {
                                     const budgets = JSON.parse(storedBudgets);
@@ -160,6 +190,11 @@ const BudgetDetailScreen = ({ navigation }) => {
                                     await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
                                 }
                             }
+
+                            // Update Redux store
+                            dispatch(setBudgets([])); // Clear the current budget in Redux
+
+                            Alert.alert('Success', 'Budget deleted successfully');
                             navigation.goBack();
                         } catch (error) {
                             console.error('Error deleting budget:', error);

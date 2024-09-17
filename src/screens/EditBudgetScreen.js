@@ -5,9 +5,10 @@ import CustomButton from '../components/CustomButton';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const EditBudgetScreen = ({ route, navigation }) => {
-    const { budget } = route.params;
+    const { budget, onBudgetUpdate } = route.params;
     const [name, setName] = useState(budget.name);
     const [goal, setGoal] = useState(budget.goal.toString());
 
@@ -18,6 +19,7 @@ const EditBudgetScreen = ({ route, navigation }) => {
         }
 
         try {
+            const updatedBudget = { ...budget, name, goal: parseFloat(goal) };
             const userId = auth.currentUser.uid;
             const userBudgetsRef = doc(db, 'userBudgets', userId);
             const docSnap = await getDoc(userBudgetsRef);
@@ -25,10 +27,24 @@ const EditBudgetScreen = ({ route, navigation }) => {
             if (docSnap.exists()) {
                 const userBudgets = docSnap.data().budgets;
                 const updatedBudgets = userBudgets.map(b =>
-                    b.id === budget.id ? { ...b, name, goal: parseFloat(goal) } : b
+                    b.id === budget.id ? updatedBudget : b
                 );
 
                 await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+
+                // Update local storage
+                const storedBudgets = await AsyncStorage.getItem('budgets');
+                if (storedBudgets) {
+                    const budgets = JSON.parse(storedBudgets);
+                    const updatedStoredBudgets = budgets.map(b =>
+                        b.id === budget.id ? updatedBudget : b
+                    );
+                    await AsyncStorage.setItem('budgets', JSON.stringify(updatedStoredBudgets));
+                }
+
+                // Call the callback function to update the budget in BudgetDetailScreen
+                onBudgetUpdate(updatedBudget);
+
                 Alert.alert('Success', 'Budget updated successfully');
                 navigation.goBack();
             }
