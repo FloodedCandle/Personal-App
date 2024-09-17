@@ -9,6 +9,7 @@ import { setBudgets } from '../redux/budgetSlice';
 import { useRoute } from '@react-navigation/native';
 import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
+import { addTransaction } from '../redux/transactionSlice';
 
 const BudgetDetailScreen = ({ navigation }) => {
     const route = useRoute();
@@ -98,7 +99,34 @@ const BudgetDetailScreen = ({ navigation }) => {
                     await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
                 }
 
-                // Update local storage
+                // Add transaction
+                const newTransaction = {
+                    id: Date.now().toString(),
+                    budgetId: budget.id,
+                    budgetName: budget.name,
+                    amount: fundAmount,
+                    date: new Date().toISOString(), // Use ISO string instead of Timestamp
+                    type: 'expense'
+                };
+
+                if (!isOfflineMode) {
+                    const transactionsRef = doc(db, 'transactions', userId);
+                    await updateDoc(transactionsRef, {
+                        transactions: arrayUnion({
+                            ...newTransaction,
+                            date: new Date() // Use Date object for Firestore
+                        })
+                    });
+                }
+
+                // Update local storage and Redux
+                const storedTransactions = await AsyncStorage.getItem('transactions');
+                const transactions = storedTransactions ? JSON.parse(storedTransactions) : [];
+                transactions.push(newTransaction);
+                await AsyncStorage.setItem('transactions', JSON.stringify(transactions));
+                dispatch(addTransaction(newTransaction));
+
+                // Update local storage for budgets
                 const storedBudgets = await AsyncStorage.getItem('budgets');
                 if (storedBudgets) {
                     const budgets = JSON.parse(storedBudgets);
@@ -107,18 +135,34 @@ const BudgetDetailScreen = ({ navigation }) => {
                 }
             }
 
-            // Update local state
-            setBudget(updatedBudget);
-            dispatch(setBudgets([updatedBudget]));
+            // Check if the budget is completed
+            if (newTotalSpent >= budget.goal) {
+                // Move the budget to completed in the local state
+                const activeBudgets = (await AsyncStorage.getItem('budgets'))
+                    ? JSON.parse(await AsyncStorage.getItem('budgets'))
+                    : [];
+                const updatedActiveBudgets = activeBudgets.filter(b => b.id !== budget.id);
+                await AsyncStorage.setItem('budgets', JSON.stringify(updatedActiveBudgets));
+
+                // Update Redux store
+                dispatch(setBudgets(updatedActiveBudgets));
+
+                // Show completion message
+                Alert.alert(
+                    "Budget Completed",
+                    `Congratulations! You've reached your goal for "${budget.name}".`,
+                    [
+                        { text: "OK", onPress: () => navigation.navigate('Budget') }
+                    ]
+                );
+            } else {
+                // Update local state
+                setBudget(updatedBudget);
+                dispatch(setBudgets([updatedBudget]));
+            }
+
             setAmount('');
             Alert.alert('Success', 'Funds added successfully');
-
-            if (newTotalSpent >= budget.goal) {
-                await addNotification(budget.name);
-                Alert.alert('Budget Goal Reached', `Congratulations! You've reached your goal for "${budget.name}"`, [
-                    { text: 'OK', onPress: () => navigation.navigate('MainHome') }
-                ]);
-            }
         } catch (error) {
             console.error('Error adding funds:', error);
             Alert.alert('Error', 'Failed to add funds. Please try again.');

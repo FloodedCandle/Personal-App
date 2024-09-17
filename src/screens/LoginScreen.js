@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, Image, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert, Modal, FlatList, Dimensions } from 'react-native';
+import { View, TextInput, Image, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, SafeAreaView, Alert, FlatList, Dimensions } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { setUser } from '../redux/userSlice';
 import CustomButton from '../components/CustomButton';
 import CustomText from '../components/CustomText';
 import { auth } from '../config/firebaseConfig';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
-import { clearUserData, loadUserData } from '../utils/userDataUtils'; // We'll create this utility file
+import { clearUserData, loadUserData } from '../utils/userDataUtils';
 
 const { width, height } = Dimensions.get('window');
 const logo = require('../assets/logo.png');
@@ -24,19 +24,21 @@ const LoginScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     setIsSwitch(route.params?.isSwitch || false);
-    const getStoredAccounts = async () => {
-      try {
-        const accounts = await AsyncStorage.getItem('savedAccounts');
-        if (accounts) {
-          setSavedAccounts(JSON.parse(accounts));
-        }
-      } catch (error) {
-        console.error('Error retrieving stored accounts:', error);
-      }
-    };
-
     getStoredAccounts();
   }, [route.params]);
+
+  const getStoredAccounts = async () => {
+    try {
+      const accounts = await AsyncStorage.getItem('savedAccounts');
+      console.log('Retrieved accounts:', accounts);
+      if (accounts) {
+        const parsedAccounts = JSON.parse(accounts);
+        setSavedAccounts(parsedAccounts);
+      }
+    } catch (error) {
+      console.error('Error retrieving stored accounts:', error);
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -58,6 +60,7 @@ const LoginScreen = ({ navigation, route }) => {
       if (rememberMe) {
         const updatedAccounts = [...savedAccounts.filter(acc => acc.email !== email), { email, password }];
         await AsyncStorage.setItem('savedAccounts', JSON.stringify(updatedAccounts));
+        console.log('Saved accounts:', updatedAccounts);
       }
 
       await AsyncStorage.setItem('offlineMode', 'false');
@@ -88,15 +91,6 @@ const LoginScreen = ({ navigation, route }) => {
   const renderAccountItem = ({ item }) => (
     <TouchableOpacity style={styles.accountItem} onPress={() => selectAccount(item)}>
       <CustomText>{item.email}</CustomText>
-    </TouchableOpacity>
-  );
-
-  const CustomCheckbox = ({ checked, onPress, label }) => (
-    <TouchableOpacity style={styles.checkboxContainer} onPress={onPress}>
-      <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
-        {checked && <MaterialIcons name="check" size={18} color="#FFFFFF" />}
-      </View>
-      <CustomText style={styles.checkboxLabel}>{label}</CustomText>
     </TouchableOpacity>
   );
 
@@ -131,6 +125,17 @@ const LoginScreen = ({ navigation, route }) => {
             )}
           </View>
 
+          {showDropdown && savedAccounts.length > 0 && (
+            <View style={styles.dropdownContainer}>
+              <FlatList
+                data={savedAccounts}
+                renderItem={renderAccountItem}
+                keyExtractor={(item) => item.email}
+                style={styles.dropdownList}
+              />
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
             <MaterialIcons name="lock" size={24} color="#3498DB" style={styles.inputIcon} />
             <TextInput
@@ -145,11 +150,12 @@ const LoginScreen = ({ navigation, route }) => {
             />
           </View>
 
-          <CustomCheckbox
-            checked={rememberMe}
-            onPress={() => setRememberMe(!rememberMe)}
-            label="Remember Me"
-          />
+          <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
+            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+              {rememberMe && <MaterialIcons name="check" size={18} color="#FFFFFF" />}
+            </View>
+            <CustomText style={styles.checkboxLabel}>Remember Me</CustomText>
+          </TouchableOpacity>
 
           <CustomButton
             title="Login"
@@ -165,27 +171,6 @@ const LoginScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      <Modal
-        visible={showDropdown}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDropdown(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDropdown(false)}
-        >
-          <View style={styles.dropdownList}>
-            <FlatList
-              data={savedAccounts}
-              renderItem={renderAccountItem}
-              keyExtractor={(item) => item.email}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -290,21 +275,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dropdownList: {
+  dropdownContainer: {
     backgroundColor: '#FFFFFF',
     borderRadius: 8,
-    padding: 10,
-    width: width * 0.8,
-    maxHeight: height * 0.4,
+    marginTop: 5,
+    marginBottom: 15,
+    maxHeight: 150,
+    borderWidth: 1,
+    borderColor: '#3498DB',
+  },
+  dropdownList: {
+    width: '100%',
   },
   accountItem: {
-    padding: 10,
+    padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },

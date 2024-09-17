@@ -35,10 +35,11 @@ const SignupScreen = ({ navigation }) => {
         createdAt: new Date()
       });
 
-      // Initialize empty budgets, transactions, and notifications for the new user
+      // Initialize empty collections for the new user
       await setDoc(doc(db, 'userBudgets', user.uid), { budgets: [] });
       await setDoc(doc(db, 'transactions', user.uid), { transactions: [] });
       await setDoc(doc(db, 'notifications', user.uid), { notifications: [] });
+      await setDoc(doc(db, 'userPreferences', user.uid), { chartTheme: 'default' });
 
       // Set user in Redux
       dispatch(setUser({

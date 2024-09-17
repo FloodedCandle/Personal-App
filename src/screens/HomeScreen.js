@@ -8,10 +8,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setBudgets } from '../redux/budgetSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db, auth } from '../config/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { getThemeColors } from '../config/chartThemes';
 import { LinearGradient } from 'expo-linear-gradient';
-import NetInfo from '@react-native-community/netinfo';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -79,33 +78,26 @@ const HomeScreen = ({ navigation }) => {
       const isOffline = offlineMode === 'true';
       setIsOfflineMode(isOffline);
 
+      let budgetsData;
       if (isOffline) {
         const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
-        if (storedBudgets) {
-          const parsedBudgets = JSON.parse(storedBudgets);
-          const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
-          console.log('Stored offline active budgets:', activeBudgets);
-          dispatch(setBudgets(activeBudgets));
-          processCategoryData(activeBudgets);
-        } else {
-          dispatch(setBudgets([]));
-          processCategoryData([]);
-        }
+        budgetsData = storedBudgets ? JSON.parse(storedBudgets) : [];
       } else {
         const userId = auth.currentUser?.uid;
         if (userId) {
           const userBudgetsRef = doc(db, 'userBudgets', userId);
           const docSnap = await getDoc(userBudgetsRef);
           if (docSnap.exists()) {
-            const userBudgets = docSnap.data().budgets || [];
-            const activeBudgets = userBudgets.filter(budget => budget.amountSpent < budget.goal);
-            console.log('Firestore active budgets:', activeBudgets);
-            dispatch(setBudgets(activeBudgets));
-            await AsyncStorage.setItem('budgets', JSON.stringify(userBudgets));
-            processCategoryData(activeBudgets);
+            budgetsData = docSnap.data().budgets || [];
           }
         }
       }
+
+      // Filter out completed budgets
+      const activeBudgets = budgetsData.filter(budget => budget.amountSpent < budget.goal);
+
+      dispatch(setBudgets(activeBudgets));
+      processCategoryData(activeBudgets);
     } catch (error) {
       console.error('Error fetching budgets: ', error);
     }

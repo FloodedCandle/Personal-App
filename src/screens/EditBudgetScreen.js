@@ -6,11 +6,14 @@ import { db, auth } from '../config/firebaseConfig';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { setBudgets } from '../redux/budgetSlice';
 
 const EditBudgetScreen = ({ route, navigation }) => {
-    const { budget, onBudgetUpdate } = route.params;
+    const { budget, isOfflineMode } = route.params;
     const [name, setName] = useState(budget.name);
     const [goal, setGoal] = useState(budget.goal.toString());
+    const dispatch = useDispatch();
 
     const handleSave = async () => {
         if (!name || !goal) {
@@ -20,34 +23,38 @@ const EditBudgetScreen = ({ route, navigation }) => {
 
         try {
             const updatedBudget = { ...budget, name, goal: parseFloat(goal) };
-            const userId = auth.currentUser.uid;
-            const userBudgetsRef = doc(db, 'userBudgets', userId);
-            const docSnap = await getDoc(userBudgetsRef);
 
-            if (docSnap.exists()) {
-                const userBudgets = docSnap.data().budgets;
-                const updatedBudgets = userBudgets.map(b =>
-                    b.id === budget.id ? updatedBudget : b
-                );
-
-                await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-
-                // Update local storage
-                const storedBudgets = await AsyncStorage.getItem('budgets');
+            if (isOfflineMode) {
+                const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
                 if (storedBudgets) {
                     const budgets = JSON.parse(storedBudgets);
-                    const updatedStoredBudgets = budgets.map(b =>
+                    const updatedBudgets = budgets.map(b =>
                         b.id === budget.id ? updatedBudget : b
                     );
-                    await AsyncStorage.setItem('budgets', JSON.stringify(updatedStoredBudgets));
+                    await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
+                    dispatch(setBudgets(updatedBudgets));
                 }
+            } else {
+                const userId = auth.currentUser.uid;
+                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                const docSnap = await getDoc(userBudgetsRef);
 
-                // Call the callback function to update the budget in BudgetDetailScreen
-                onBudgetUpdate(updatedBudget);
+                if (docSnap.exists()) {
+                    const userBudgets = docSnap.data().budgets;
+                    const updatedBudgets = userBudgets.map(b =>
+                        b.id === budget.id ? updatedBudget : b
+                    );
 
-                Alert.alert('Success', 'Budget updated successfully');
-                navigation.goBack();
+                    await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+
+                    // Update local storage
+                    await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
+                    dispatch(setBudgets(updatedBudgets));
+                }
             }
+
+            Alert.alert('Success', 'Budget updated successfully');
+            navigation.goBack();
         } catch (error) {
             console.error('Error updating budget: ', error);
             Alert.alert('Error', 'Failed to update budget. Please try again.');

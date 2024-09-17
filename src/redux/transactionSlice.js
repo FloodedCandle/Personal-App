@@ -5,15 +5,24 @@ const transactionSlice = createSlice({
     initialState: [],
     reducers: {
         setTransactions: (state, action) => {
-            return action.payload;
+            return action.payload.map(transaction => ({
+                ...transaction,
+                date: transaction.date.toDate ? transaction.date.toDate().toISOString() : transaction.date
+            }));
         },
         addTransaction: (state, action) => {
-            state.push(action.payload);
+            state.push({
+                ...action.payload,
+                date: action.payload.date.toDate ? action.payload.date.toDate().toISOString() : action.payload.date
+            });
         },
         updateTransaction: (state, action) => {
             const index = state.findIndex(transaction => transaction.id === action.payload.id);
             if (index !== -1) {
-                state[index] = action.payload;
+                state[index] = {
+                    ...action.payload,
+                    date: action.payload.date.toDate ? action.payload.date.toDate().toISOString() : action.payload.date
+                };
             }
         },
         deleteTransaction: (state, action) => {

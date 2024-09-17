@@ -6,6 +6,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../config/firebaseConfig';
 
 const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
@@ -15,33 +17,42 @@ const NotificationsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       checkOfflineMode();
-      fetchNotifications();
     }, [])
   );
 
   const checkOfflineMode = async () => {
     const offlineMode = await AsyncStorage.getItem('offlineMode');
     setIsOfflineMode(offlineMode === 'true');
+    if (offlineMode !== 'true') {
+      fetchNotifications();
+    }
   };
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const storageKey = isOfflineMode ? 'offlineNotifications' : 'notifications';
-      const storedNotifications = await AsyncStorage.getItem(storageKey);
-      if (storedNotifications) {
-        setNotifications(JSON.parse(storedNotifications));
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        const notificationsRef = doc(db, 'notifications', userId);
+        const docSnap = await getDoc(notificationsRef);
+        if (docSnap.exists()) {
+          const notificationsData = docSnap.data().notifications || [];
+          setNotifications(notificationsData);
+          await AsyncStorage.setItem('notifications', JSON.stringify(notificationsData));
+        }
       }
     } catch (error) {
       console.error('Error fetching notifications: ', error);
       Alert.alert('Error', 'Failed to fetch notifications. Please try again.');
     }
-  }, [isOfflineMode]);
+  }, []);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchNotifications();
-    setRefreshing(false);
-  }, [fetchNotifications]);
+    if (!isOfflineMode) {
+      setRefreshing(true);
+      await fetchNotifications();
+      setRefreshing(false);
+    }
+  }, [fetchNotifications, isOfflineMode]);
 
   const deleteNotification = useCallback(async (notification) => {
     try {
@@ -92,6 +103,20 @@ const NotificationsScreen = () => {
     }
     return 'Invalid Date';
   };
+
+  if (isOfflineMode) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+          <CustomText style={styles.headerText}>Notifications</CustomText>
+        </LinearGradient>
+        <View style={styles.offlineContainer}>
+          <MaterialIcons name="wifi-off" size={64} color="#BDC3C7" />
+          <CustomText style={styles.offlineText}>Notifications are not available in offline mode</CustomText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -205,6 +230,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  offlineContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  offlineText: {
+    fontSize: 18,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

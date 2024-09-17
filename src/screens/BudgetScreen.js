@@ -8,12 +8,17 @@ import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { db, auth } from '../config/firebaseConfig';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useDispatch } from 'react-redux';
+import { setBudgets } from '../redux/budgetSlice';
 
 const BudgetScreen = () => {
-  const [budgets, setBudgets] = useState({ active: [], completed: [] });
+  const [budgets, setBudgetsState] = useState({ active: [], completed: [] });
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const navigation = useNavigation();
+  const dispatch = useDispatch();
 
   useFocusEffect(
     useCallback(() => {
@@ -29,14 +34,29 @@ const BudgetScreen = () => {
 
   const fetchBudgets = async () => {
     try {
-      const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
-      const storedBudgets = await AsyncStorage.getItem(storageKey);
-      if (storedBudgets) {
-        const parsedBudgets = JSON.parse(storedBudgets);
-        const activeBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
-        const completedBudgets = parsedBudgets.filter(budget => budget.amountSpent >= budget.goal);
-        setBudgets({ active: activeBudgets, completed: completedBudgets });
+      const offlineMode = await AsyncStorage.getItem('offlineMode');
+      const isOffline = offlineMode === 'true';
+      setIsOfflineMode(isOffline);
+
+      let budgetsData;
+      if (isOffline) {
+        const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+        budgetsData = storedBudgets ? JSON.parse(storedBudgets) : [];
+      } else {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userBudgetsRef = doc(db, 'userBudgets', userId);
+          const docSnap = await getDoc(userBudgetsRef);
+          if (docSnap.exists()) {
+            budgetsData = docSnap.data().budgets || [];
+          }
+        }
       }
+
+      const activeBudgets = budgetsData.filter(budget => budget.amountSpent < budget.goal);
+      const completedBudgets = budgetsData.filter(budget => budget.amountSpent >= budget.goal);
+      setBudgetsState({ active: activeBudgets, completed: completedBudgets });
+      dispatch(setBudgets(budgetsData));
     } catch (error) {
       console.error('Error fetching budgets: ', error);
       Alert.alert('Error', 'Failed to fetch budgets. Please try again.');
@@ -44,7 +64,7 @@ const BudgetScreen = () => {
   };
 
   const handleEditBudget = (budget) => {
-    navigation.navigate('EditBudget', { budget });
+    navigation.navigate('EditBudget', { budget, isOfflineMode });
   };
 
   const handleDeleteBudget = async (budget) => {
@@ -57,21 +77,18 @@ const BudgetScreen = () => {
           text: "Delete",
           onPress: async () => {
             try {
-              const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
-              const storedBudgets = await AsyncStorage.getItem(storageKey);
-              if (storedBudgets) {
-                const parsedBudgets = JSON.parse(storedBudgets);
-                const updatedBudgets = parsedBudgets.filter(b => b.id !== budget.id);
-                await AsyncStorage.setItem(storageKey, JSON.stringify(updatedBudgets));
+              const updatedBudgets = [...budgets.active, ...budgets.completed].filter(b => b.id !== budget.id);
 
-                if (!isOfflineMode) {
-                  const userId = auth.currentUser.uid;
-                  const userBudgetsRef = doc(db, 'userBudgets', userId);
-                  await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-                }
-
-                fetchBudgets(); // Refresh the list
+              if (isOfflineMode) {
+                await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
+              } else {
+                const userId = auth.currentUser.uid;
+                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
               }
+
+              fetchBudgets();
+              Alert.alert('Success', 'Budget deleted successfully');
             } catch (error) {
               console.error('Error deleting budget: ', error);
               Alert.alert('Error', 'Failed to delete budget. Please try again.');
@@ -92,27 +109,23 @@ const BudgetScreen = () => {
           text: "Clear",
           onPress: async () => {
             try {
-              const storageKey = isOfflineMode ? 'offlineBudgets' : 'budgets';
-              const storedBudgets = await AsyncStorage.getItem(storageKey);
-              if (storedBudgets) {
-                const parsedBudgets = JSON.parse(storedBudgets);
-                let updatedBudgets;
-                if (type === 'Active') {
-                  updatedBudgets = parsedBudgets.filter(budget => budget.amountSpent >= budget.goal);
-                } else if (type === 'Completed') {
-                  updatedBudgets = parsedBudgets.filter(budget => budget.amountSpent < budget.goal);
-                }
-                await AsyncStorage.setItem(storageKey, JSON.stringify(updatedBudgets));
-
-                if (!isOfflineMode && auth.currentUser) {
-                  const userId = auth.currentUser.uid;
-                  const userBudgetsRef = doc(db, 'userBudgets', userId);
-                  await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
-                }
-
-                fetchBudgets(); // Refresh the list
-                Alert.alert('Success', `All ${type.toLowerCase()} budgets have been cleared.`);
+              let updatedBudgets;
+              if (type === 'Active') {
+                updatedBudgets = budgets.completed;
+              } else if (type === 'Completed') {
+                updatedBudgets = budgets.active;
               }
+
+              if (isOfflineMode) {
+                await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
+              } else {
+                const userId = auth.currentUser.uid;
+                const userBudgetsRef = doc(db, 'userBudgets', userId);
+                await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
+              }
+
+              fetchBudgets();
+              Alert.alert('Success', `All ${type.toLowerCase()} budgets have been cleared.`);
             } catch (error) {
               console.error(`Error clearing ${type.toLowerCase()} budgets:`, error);
               Alert.alert('Error', `Failed to clear ${type.toLowerCase()} budgets. Please try again.`);
@@ -129,7 +142,7 @@ const BudgetScreen = () => {
       amountSpent={item.amountSpent || 0}
       amountTotal={item.goal || 0}
       icon={item.icon}
-      onPress={() => navigation.navigate('BudgetDetail', { budget: item })}
+      onPress={() => navigation.navigate('BudgetDetail', { budget: item, isOfflineMode })}
       onEdit={() => handleEditBudget(item)}
       onDelete={() => handleDeleteBudget(item)}
     />
@@ -187,7 +200,7 @@ const BudgetScreen = () => {
       />
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => navigation.navigate('CreateBudget')}
+        onPress={() => navigation.navigate('CreateBudget', { isOfflineMode })}
       >
         <MaterialIcons name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>

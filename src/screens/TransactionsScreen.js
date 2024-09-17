@@ -8,42 +8,43 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db, auth } from '../config/firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useSelector, useDispatch } from 'react-redux';
+import { setTransactions } from '../redux/transactionSlice';
 
-const TransactionsScreen = () => {
-  const [transactions, setTransactions] = useState([]);
+const TransactionsScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const transactions = useSelector(state => state.transactions);
   const [refreshing, setRefreshing] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       checkOfflineMode();
-      fetchTransactions();
     }, [])
   );
 
   const checkOfflineMode = async () => {
     const offlineMode = await AsyncStorage.getItem('offlineMode');
     setIsOfflineMode(offlineMode === 'true');
+    if (offlineMode !== 'true') {
+      fetchTransactions();
+    }
   };
 
   const fetchTransactions = async () => {
     try {
-      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
-      if (isOfflineMode) {
-        const storedTransactions = await AsyncStorage.getItem(storageKey);
-        if (storedTransactions) {
-          setTransactions(JSON.parse(storedTransactions));
-        }
-      } else {
-        const userId = auth.currentUser?.uid;
-        if (userId) {
-          const transactionsRef = doc(db, 'transactions', userId);
-          const docSnap = await getDoc(transactionsRef);
-          if (docSnap.exists()) {
-            const transactionsData = docSnap.data().transactions || [];
-            setTransactions(transactionsData);
-            await AsyncStorage.setItem(storageKey, JSON.stringify(transactionsData));
-          }
+      const userId = auth.currentUser?.uid;
+      if (userId) {
+        const transactionsRef = doc(db, 'transactions', userId);
+        const docSnap = await getDoc(transactionsRef);
+        if (docSnap.exists()) {
+          const transactionsData = docSnap.data().transactions || [];
+          const serializedTransactions = transactionsData.map(transaction => ({
+            ...transaction,
+            date: transaction.date.toDate().toISOString()
+          }));
+          dispatch(setTransactions(serializedTransactions));
+          await AsyncStorage.setItem('transactions', JSON.stringify(serializedTransactions));
         }
       }
     } catch (error) {
@@ -53,53 +54,52 @@ const TransactionsScreen = () => {
   };
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchTransactions();
-    setRefreshing(false);
-  }, [fetchTransactions]);
+    if (!isOfflineMode) {
+      setRefreshing(true);
+      await fetchTransactions();
+      setRefreshing(false);
+    }
+  }, [fetchTransactions, isOfflineMode]);
 
   const deleteTransaction = useCallback(async (transactionId) => {
     try {
-      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
       const updatedTransactions = transactions.filter(t => t.id !== transactionId);
 
-      if (isOfflineMode) {
-        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedTransactions));
-      } else {
+      if (!isOfflineMode) {
         const userId = auth.currentUser.uid;
         const transactionsRef = doc(db, 'transactions', userId);
         await updateDoc(transactionsRef, { transactions: updatedTransactions });
-        await AsyncStorage.setItem(storageKey, JSON.stringify(updatedTransactions));
       }
 
-      setTransactions(updatedTransactions);
+      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
+      await AsyncStorage.setItem(storageKey, JSON.stringify(updatedTransactions));
+
+      dispatch(setTransactions(updatedTransactions));
       Alert.alert('Success', 'Transaction deleted successfully');
     } catch (error) {
       console.error('Error deleting transaction:', error);
       Alert.alert('Error', 'Failed to delete transaction');
     }
-  }, [isOfflineMode, transactions]);
+  }, [isOfflineMode, transactions, dispatch]);
 
   const deleteAllTransactions = useCallback(async () => {
     try {
-      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
-
-      if (isOfflineMode) {
-        await AsyncStorage.setItem(storageKey, JSON.stringify([]));
-      } else {
+      if (!isOfflineMode) {
         const userId = auth.currentUser.uid;
         const transactionsRef = doc(db, 'transactions', userId);
         await updateDoc(transactionsRef, { transactions: [] });
-        await AsyncStorage.setItem(storageKey, JSON.stringify([]));
       }
 
-      setTransactions([]);
+      const storageKey = isOfflineMode ? 'offlineTransactions' : 'transactions';
+      await AsyncStorage.setItem(storageKey, JSON.stringify([]));
+
+      dispatch(setTransactions([]));
       Alert.alert('Success', 'All transactions deleted successfully');
     } catch (error) {
       console.error('Error deleting all transactions:', error);
       Alert.alert('Error', 'Failed to delete all transactions');
     }
-  }, [isOfflineMode]);
+  }, [isOfflineMode, dispatch]);
 
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionItem}>
@@ -115,6 +115,20 @@ const TransactionsScreen = () => {
       </TouchableOpacity>
     </View>
   );
+
+  if (isOfflineMode) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
+          <CustomText style={styles.headerText}>Transactions</CustomText>
+        </LinearGradient>
+        <View style={styles.offlineContainer}>
+          <MaterialIcons name="wifi-off" size={64} color="#BDC3C7" />
+          <CustomText style={styles.offlineText}>Transactions are not available in offline mode</CustomText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -236,6 +250,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  offlineContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  offlineText: {
+    fontSize: 18,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 

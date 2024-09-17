@@ -6,6 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getThemeColors } from '../config/chartThemes';
+import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,9 +37,27 @@ const StatisticsScreen = () => {
 
   const loadChartTheme = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('chartTheme');
-      if (savedTheme) {
-        setChartTheme(savedTheme);
+      if (!isOfflineMode) {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userPreferencesRef = doc(db, 'userPreferences', userId);
+          const docSnap = await getDoc(userPreferencesRef);
+          if (docSnap.exists()) {
+            const { chartTheme } = docSnap.data();
+            setChartTheme(chartTheme);
+            await AsyncStorage.setItem('chartTheme', chartTheme);
+          }
+        } else {
+          const savedTheme = await AsyncStorage.getItem('chartTheme');
+          if (savedTheme) {
+            setChartTheme(savedTheme);
+          }
+        }
+      } else {
+        const savedTheme = await AsyncStorage.getItem('chartTheme');
+        if (savedTheme) {
+          setChartTheme(savedTheme);
+        }
       }
     } catch (error) {
       console.error('Error loading chart theme:', error);

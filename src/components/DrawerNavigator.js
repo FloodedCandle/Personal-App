@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../screens/HomeScreen';
 import NotificationScreen from '../screens/NotificationsScreen';
 import BudgetScreen from '../screens/BudgetScreen';
@@ -12,6 +13,17 @@ import CurrencyScreen from '../screens/CurrencyScreen';
 const Drawer = createDrawerNavigator();
 
 const DrawerNavigator = () => {
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
+  useEffect(() => {
+    checkOfflineMode();
+  }, []);
+
+  const checkOfflineMode = async () => {
+    const offlineMode = await AsyncStorage.getItem('offlineMode');
+    setIsOfflineMode(offlineMode === 'true');
+  };
+
   return (
     <Drawer.Navigator initialRouteName="MainHome">
       <Drawer.Screen
@@ -30,40 +42,44 @@ const DrawerNavigator = () => {
         }}
       />
       <Drawer.Screen
-        name="Notification"
-        component={NotificationScreen}
-        options={{
-          drawerIcon: () => <MaterialIcons name="notifications" size={24} color="#2C3E50" />
-        }}
-      />
-      <Drawer.Screen
         name="Budget"
         component={BudgetScreen}
         options={{
           drawerIcon: () => <MaterialIcons name="account-balance-wallet" size={24} color="#2C3E50" />
         }}
       />
-      <Drawer.Screen
-        name="Transaction"
-        component={TransactionScreen}
-        options={{
-          drawerIcon: () => <MaterialIcons name="swap-horiz" size={24} color="#2C3E50" />
-        }}
-      />
-      <Drawer.Screen
-        name="Statistics"
-        component={StatisticsScreen}
-        options={{
-          drawerIcon: () => <MaterialIcons name="bar-chart" size={24} color="#2C3E50" />
-        }}
-      />
-      <Drawer.Screen
-        name="Currency"
-        component={CurrencyScreen}
-        options={{
-          drawerIcon: () => <MaterialIcons name="attach-money" size={24} color="#2C3E50" />
-        }}
-      />
+      {!isOfflineMode && (
+        <>
+          <Drawer.Screen
+            name="Notification"
+            component={NotificationScreen}
+            options={{
+              drawerIcon: () => <MaterialIcons name="notifications" size={24} color="#2C3E50" />
+            }}
+          />
+          <Drawer.Screen
+            name="Transaction"
+            component={TransactionScreen}
+            options={{
+              drawerIcon: () => <MaterialIcons name="swap-horiz" size={24} color="#2C3E50" />
+            }}
+          />
+          <Drawer.Screen
+            name="Statistics"
+            component={StatisticsScreen}
+            options={{
+              drawerIcon: () => <MaterialIcons name="bar-chart" size={24} color="#2C3E50" />
+            }}
+          />
+          <Drawer.Screen
+            name="Currency"
+            component={CurrencyScreen}
+            options={{
+              drawerIcon: () => <MaterialIcons name="attach-money" size={24} color="#2C3E50" />
+            }}
+          />
+        </>
+      )}
     </Drawer.Navigator>
   );
 };
