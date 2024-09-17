@@ -28,7 +28,11 @@ const NotificationsScreen = ({ route }) => {
           const docSnap = await getDoc(notificationsRef);
           if (docSnap.exists()) {
             const notificationsData = docSnap.data().notifications || [];
-            setNotifications(notificationsData.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate()));
+            setNotifications(notificationsData.sort((a, b) => {
+              const dateA = a.createdAt?.toDate?.() || new Date(a.createdAt);
+              const dateB = b.createdAt?.toDate?.() || new Date(b.createdAt);
+              return dateB - dateA;
+            }));
             await AsyncStorage.setItem('notifications', JSON.stringify(notificationsData));
           }
         }
@@ -53,37 +57,50 @@ const NotificationsScreen = ({ route }) => {
 
   const deleteNotification = useCallback(async (notification) => {
     try {
-      const userId = auth.currentUser.uid;
-      const notificationsRef = doc(db, 'notifications', userId);
-      await updateDoc(notificationsRef, {
-        notifications: arrayRemove(notification)
-      });
+      if (isOfflineMode) {
+        const storedNotifications = await AsyncStorage.getItem('notifications');
+        if (storedNotifications) {
+          const updatedNotifications = JSON.parse(storedNotifications).filter(n => n.id !== notification.id);
+          await AsyncStorage.setItem('notifications', JSON.stringify(updatedNotifications));
+          setNotifications(updatedNotifications);
+        }
+      } else {
+        const userId = auth.currentUser.uid;
+        const notificationsRef = doc(db, 'notifications', userId);
+        await updateDoc(notificationsRef, {
+          notifications: arrayRemove(notification)
+        });
+      }
       await fetchNotifications(); // Refresh the list
     } catch (error) {
       console.error('Error deleting notification:', error);
       Alert.alert('Error', 'Failed to delete notification. Please try again.');
     }
-  }, [fetchNotifications]);
+  }, [fetchNotifications, isOfflineMode]);
 
   const deleteAllNotifications = useCallback(async () => {
     try {
-      const userId = auth.currentUser.uid;
-      const notificationsRef = doc(db, 'notifications', userId);
-      await updateDoc(notificationsRef, { notifications: [] });
+      if (isOfflineMode) {
+        await AsyncStorage.setItem('notifications', JSON.stringify([]));
+      } else {
+        const userId = auth.currentUser.uid;
+        const notificationsRef = doc(db, 'notifications', userId);
+        await updateDoc(notificationsRef, { notifications: [] });
+      }
       setNotifications([]);
       Alert.alert('Success', 'All notifications deleted successfully');
     } catch (error) {
       console.error('Error deleting all notifications:', error);
       Alert.alert('Error', 'Failed to delete all notifications. Please try again.');
     }
-  }, []);
+  }, [isOfflineMode]);
 
   const renderNotification = ({ item }) => (
     <View style={styles.notificationItem}>
       <View style={styles.notificationContent}>
         <CustomText style={styles.notificationText}>{item.message}</CustomText>
         <CustomText style={styles.notificationDate}>
-          {item.createdAt.toDate().toLocaleString()}
+          {formatDate(item.createdAt)}
         </CustomText>
       </View>
       <TouchableOpacity
@@ -94,6 +111,15 @@ const NotificationsScreen = ({ route }) => {
       </TouchableOpacity>
     </View>
   );
+
+  const formatDate = (dateValue) => {
+    if (dateValue?.toDate) {
+      return dateValue.toDate().toLocaleString();
+    } else if (typeof dateValue === 'string') {
+      return new Date(dateValue).toLocaleString();
+    }
+    return 'Invalid Date';
+  };
 
   return (
     <SafeAreaView style={styles.container}>

@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import { setBudgets } from '../redux/budgetSlice';
 import { useRoute } from '@react-navigation/native';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
 
 const BudgetDetailScreen = ({ navigation }) => {
@@ -132,13 +132,24 @@ const BudgetDetailScreen = ({ navigation }) => {
             const newNotification = {
                 id: Date.now().toString(),
                 message: `Budget "${budgetName}" has been completed!`,
-                createdAt: new Date()
+                createdAt: new Date().toISOString()
             };
 
-            const storedNotifications = await AsyncStorage.getItem('notifications');
-            const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
-            notifications.push(newNotification);
-            await AsyncStorage.setItem('notifications', JSON.stringify(notifications));
+            if (isOfflineMode) {
+                const storedNotifications = await AsyncStorage.getItem('notifications');
+                const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+                notifications.push(newNotification);
+                await AsyncStorage.setItem('notifications', JSON.stringify(notifications));
+            } else {
+                const userId = auth.currentUser.uid;
+                const notificationsRef = doc(db, 'notifications', userId);
+                await updateDoc(notificationsRef, {
+                    notifications: arrayUnion({
+                        ...newNotification,
+                        createdAt: new Date() // This will be stored as a Firestore Timestamp
+                    })
+                });
+            }
         } catch (error) {
             console.error('Error adding notification:', error);
         }
