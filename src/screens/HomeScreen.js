@@ -135,12 +135,34 @@ const HomeScreen = ({ navigation }) => {
 
   const loadChartTheme = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('chartTheme');
-      if (savedTheme) {
-        setChartTheme(savedTheme);
+      const offlineMode = await AsyncStorage.getItem('offlineMode');
+      setIsOfflineMode(offlineMode === 'true');
+
+      if (offlineMode === 'true') {
+        const savedTheme = await AsyncStorage.getItem('offlineChartTheme');
+        if (savedTheme) {
+          setChartTheme(savedTheme);
+        } else {
+          setChartTheme('default');
+        }
+      } else {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userPreferencesRef = doc(db, 'userPreferences', userId);
+          const docSnap = await getDoc(userPreferencesRef);
+          if (docSnap.exists()) {
+            const { chartTheme } = docSnap.data();
+            setChartTheme(chartTheme || 'default');
+          } else {
+            setChartTheme('default');
+          }
+        } else {
+          setChartTheme('default');
+        }
       }
     } catch (error) {
       console.error('Error loading chart theme:', error);
+      setChartTheme('default');
     }
   };
 
@@ -157,7 +179,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleThemeChange = () => {
-    navigation.navigate('ChartTheme', { currentTheme: chartTheme });
+    navigation.navigate('ChartTheme', { currentTheme: chartTheme, isOfflineMode });
   };
 
   const renderItem = ({ item }) => {

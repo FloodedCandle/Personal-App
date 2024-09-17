@@ -12,6 +12,7 @@ import SignupScreen from './src/screens/SignupScreen';
 import BudgetDetailScreen from './src/screens/BudgetDetailScreen';
 import CreateBudgetScreen from './src/screens/CreateBudgetScreen';
 import EditBudgetScreen from './src/screens/EditBudgetScreen';
+import ChartThemeScreen from './src/screens/ChartThemeScreen';
 
 const Stack = createStackNavigator();
 
@@ -60,6 +61,11 @@ const App = () => {
               name="EditBudget"
               component={EditBudgetScreen}
               options={{ title: 'Edit Budget' }}
+            />
+            <Stack.Screen
+              name="ChartTheme"
+              component={ChartThemeScreen}
+              options={{ title: 'Chart Theme' }}
             />
           </Stack.Navigator>
         </NavigationContainer>

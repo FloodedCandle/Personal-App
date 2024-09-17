@@ -74,7 +74,8 @@ const LoginScreen = ({ navigation, route }) => {
           routes: [{ name: 'MainApp' }],
         });
       } else {
-        navigation.navigate('MainApp');
+        // Navigate to MainApp, which should show the HomeScreen
+        navigation.replace('MainApp');
       }
     } catch (error) {
       console.error('Error logging in:', error.message);

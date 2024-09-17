@@ -11,7 +11,7 @@ import { db, auth } from '../config/firebaseConfig';
 
 const { width, height } = Dimensions.get('window');
 
-const StatisticsScreen = () => {
+const StatisticsScreen = ({ navigation }) => {
   const [budgets, setBudgets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,30 +37,34 @@ const StatisticsScreen = () => {
 
   const loadChartTheme = async () => {
     try {
-      if (!isOfflineMode) {
+      const offlineMode = await AsyncStorage.getItem('offlineMode');
+      setIsOfflineMode(offlineMode === 'true');
+
+      if (offlineMode === 'true') {
+        const savedTheme = await AsyncStorage.getItem('offlineChartTheme');
+        if (savedTheme) {
+          setChartTheme(savedTheme);
+        } else {
+          setChartTheme('default');
+        }
+      } else {
         const userId = auth.currentUser?.uid;
         if (userId) {
           const userPreferencesRef = doc(db, 'userPreferences', userId);
           const docSnap = await getDoc(userPreferencesRef);
           if (docSnap.exists()) {
             const { chartTheme } = docSnap.data();
-            setChartTheme(chartTheme);
-            await AsyncStorage.setItem('chartTheme', chartTheme);
+            setChartTheme(chartTheme || 'default');
+          } else {
+            setChartTheme('default');
           }
         } else {
-          const savedTheme = await AsyncStorage.getItem('chartTheme');
-          if (savedTheme) {
-            setChartTheme(savedTheme);
-          }
-        }
-      } else {
-        const savedTheme = await AsyncStorage.getItem('chartTheme');
-        if (savedTheme) {
-          setChartTheme(savedTheme);
+          setChartTheme('default');
         }
       }
     } catch (error) {
       console.error('Error loading chart theme:', error);
+      setChartTheme('default');
     }
   };
 
@@ -127,6 +131,10 @@ const StatisticsScreen = () => {
   }
 
   const { totalBudget, totalSpent, totalRemaining, completedBudgets, activeBudgets } = getTotalStats();
+
+  const handleThemeChange = () => {
+    navigation.navigate('ChartTheme', { currentTheme: chartTheme, isOfflineMode });
+  };
 
   return (
     <SafeAreaView style={styles.container}>

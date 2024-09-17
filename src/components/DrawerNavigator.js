@@ -25,20 +25,20 @@ const DrawerNavigator = () => {
   };
 
   return (
-    <Drawer.Navigator initialRouteName="MainHome">
+    <Drawer.Navigator initialRouteName="Home">
+      <Drawer.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          drawerIcon: () => <MaterialIcons name="home" size={24} color="#2C3E50" />,
+          title: "Home"
+        }}
+      />
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
           drawerIcon: () => <MaterialIcons name="person" size={24} color="#2C3E50" />
-        }}
-      />
-      <Drawer.Screen
-        name="MainHome"
-        component={HomeScreen}
-        options={{
-          drawerIcon: () => <MaterialIcons name="home" size={24} color="#2C3E50" />,
-          title: "Home"
         }}
       />
       <Drawer.Screen

@@ -1,24 +1,28 @@
-import React from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import CustomText from '../components/CustomText';
 import { chartThemes } from '../config/chartThemes';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ChartThemeScreen = ({ navigation, route }) => {
-    const { currentTheme } = route.params;
+    const [currentTheme, setCurrentTheme] = useState(route.params.currentTheme);
+    const isOfflineMode = route.params.isOfflineMode;
 
     const handleThemeSelect = async (theme) => {
         try {
-            const userId = auth.currentUser?.uid;
-            if (userId) {
-                await updateDoc(doc(db, 'userPreferences', userId), { chartTheme: theme });
-                await AsyncStorage.setItem('chartTheme', theme);
+            if (isOfflineMode) {
+                await AsyncStorage.setItem('offlineChartTheme', theme);
+            } else {
+                const userId = auth.currentUser?.uid;
+                if (userId) {
+                    await updateDoc(doc(db, 'userPreferences', userId), { chartTheme: theme });
+                }
+                await AsyncStorage.setItem('onlineChartTheme', theme);
             }
-            navigation.navigate('MainApp', {
-                screen: 'MainHome',
-                params: { newTheme: theme },
-            });
+            setCurrentTheme(theme);
+            navigation.goBack();
         } catch (error) {
             console.error('Error updating chart theme:', error);
             Alert.alert('Error', 'Failed to update chart theme. Please try again.');
@@ -41,6 +45,9 @@ const ChartThemeScreen = ({ navigation, route }) => {
 
     return (
         <View style={styles.container}>
+            <CustomText style={styles.modeText}>
+                {isOfflineMode ? 'Offline Mode' : 'Online Mode'}
+            </CustomText>
             <FlatList
                 data={Object.keys(chartThemes)}
                 renderItem={renderThemeItem}
@@ -80,6 +87,13 @@ const styles = StyleSheet.create({
         height: 20,
         borderRadius: 10,
         marginLeft: 5,
+    },
+    modeText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#2C3E50',
+        textAlign: 'center',
+        marginVertical: 10,
     },
 });
 
