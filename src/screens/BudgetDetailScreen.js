@@ -11,8 +11,7 @@ import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
 import { addTransaction } from '../redux/transactionSlice';
 
-const BudgetDetailScreen = ({ navigation }) => {
-    const route = useRoute();
+const BudgetDetailScreen = ({ navigation, route }) => {
     const [budget, setBudget] = useState(route.params.budget);
     const [amount, setAmount] = useState('');
     const [isAddingFunds, setIsAddingFunds] = useState(false);
@@ -204,10 +203,7 @@ const BudgetDetailScreen = ({ navigation }) => {
     const handleEdit = () => {
         navigation.navigate('EditBudget', {
             budget: budget,
-            onBudgetUpdate: (updatedBudget) => {
-                setBudget(updatedBudget);
-                dispatch(setBudgets([updatedBudget]));
-            }
+            isOfflineMode: isOfflineMode
         });
     };
 
@@ -243,7 +239,7 @@ const BudgetDetailScreen = ({ navigation }) => {
                                 const storedBudgets = await AsyncStorage.getItem('budgets');
                                 if (storedBudgets) {
                                     const budgets = JSON.parse(storedBudgets);
-                                    const updatedBudgets = budgets.filter(b => b.id !== budget.id);
+                                    const updatedBudgets = budgets.map(b => b.id === budget.id ? updatedBudget : b);
                                     await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
                                 }
                             }

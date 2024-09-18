@@ -7,7 +7,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
-import { setBudgets } from '../redux/budgetSlice';
+import { updateBudget } from '../redux/budgetSlice';
 
 const EditBudgetScreen = ({ route, navigation }) => {
     const { budget, isOfflineMode } = route.params;
@@ -32,7 +32,7 @@ const EditBudgetScreen = ({ route, navigation }) => {
                         b.id === budget.id ? updatedBudget : b
                     );
                     await AsyncStorage.setItem('offlineBudgets', JSON.stringify(updatedBudgets));
-                    dispatch(setBudgets(updatedBudgets));
+                    dispatch(updateBudget(updatedBudget));
                 }
             } else {
                 const userId = auth.currentUser.uid;
@@ -49,7 +49,7 @@ const EditBudgetScreen = ({ route, navigation }) => {
 
                     // Update local storage
                     await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
-                    dispatch(setBudgets(updatedBudgets));
+                    dispatch(updateBudget(updatedBudget));
                 }
             }
 
