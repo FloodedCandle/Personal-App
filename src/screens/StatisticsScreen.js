@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl } from 'react-native';
+import { View, ScrollView, StyleSheet, Dimensions, SafeAreaView, RefreshControl, TouchableOpacity } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import CustomText from '../components/CustomText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getThemeColors } from '../config/chartThemes';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
+import { MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,11 +24,22 @@ const StatisticsScreen = ({ navigation }) => {
     try {
       const offlineMode = await AsyncStorage.getItem('offlineMode');
       setIsOfflineMode(offlineMode === 'true');
-      const storageKey = offlineMode === 'true' ? 'offlineBudgets' : 'budgets';
-      const storedBudgets = await AsyncStorage.getItem(storageKey);
-      if (storedBudgets) {
-        setBudgets(JSON.parse(storedBudgets));
+
+      let budgetsData = [];
+      if (offlineMode === 'true') {
+        const storedBudgets = await AsyncStorage.getItem('offlineBudgets');
+        budgetsData = storedBudgets ? JSON.parse(storedBudgets) : [];
+      } else {
+        const userId = auth.currentUser?.uid;
+        if (userId) {
+          const userBudgetsRef = doc(db, 'userBudgets', userId);
+          const docSnap = await getDoc(userBudgetsRef);
+          if (docSnap.exists()) {
+            budgetsData = docSnap.data().budgets || [];
+          }
+        }
       }
+      setBudgets(budgetsData);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching budgets:', error);
@@ -42,11 +54,7 @@ const StatisticsScreen = ({ navigation }) => {
 
       if (offlineMode === 'true') {
         const savedTheme = await AsyncStorage.getItem('offlineChartTheme');
-        if (savedTheme) {
-          setChartTheme(savedTheme);
-        } else {
-          setChartTheme('default');
-        }
+        setChartTheme(savedTheme || 'default');
       } else {
         const userId = auth.currentUser?.uid;
         if (userId) {
@@ -83,7 +91,7 @@ const StatisticsScreen = ({ navigation }) => {
   }, [fetchBudgets]);
 
   const chartWidth = width - 40;
-  const chartHeight = height * 0.25; // Adjust the height to be proportional to the screen
+  const chartHeight = height * 0.25;
   const colors = getThemeColors(chartTheme);
 
   const chartConfig = {
@@ -139,7 +147,12 @@ const StatisticsScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient colors={['#2C3E50', '#3498DB']} style={styles.header}>
-        <CustomText style={styles.headerText}>Statistics</CustomText>
+        <View style={styles.headerContent}>
+          <CustomText style={styles.headerText}>Statistics</CustomText>
+          <TouchableOpacity onPress={handleThemeChange}>
+            <MaterialIcons name="color-lens" size={24} color="#ECF0F1" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -187,16 +200,20 @@ const StatisticsScreen = ({ navigation }) => {
 
         <View style={styles.chartContainer}>
           <CustomText style={styles.chartTitle}>Spending by Category</CustomText>
-          <PieChart
-            data={getCategoryData()}
-            width={chartWidth}
-            height={chartHeight}
-            chartConfig={chartConfig}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="15"
-            absolute
-          />
+          {budgets.length > 0 ? (
+            <PieChart
+              data={getCategoryData()}
+              width={chartWidth}
+              height={chartHeight}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="15"
+              absolute
+            />
+          ) : (
+            <CustomText style={styles.noDataText}>No budget data available</CustomText>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -212,6 +229,11 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerText: {
     fontSize: 22,
@@ -278,6 +300,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 10,
+  },
+  noDataText: {
+    textAlign: 'center',
+    color: '#7F8C8D',
+    fontSize: 16,
+    marginTop: 20,
   },
 });
 
