@@ -17,10 +17,8 @@ export function listenToNotifications() {
             'Notification caused app to open from background state:',
             remoteMessage.notification,
         );
-        // Navigate to appropriate screen based on the notification
     });
 
-    // Check whether an initial notification is available
     messaging()
         .getInitialNotification()
         .then(remoteMessage => {
@@ -29,7 +27,6 @@ export function listenToNotifications() {
                     'Notification caused app to open from quit state:',
                     remoteMessage.notification,
                 );
-                // Navigate to appropriate screen based on the notification
             }
         });
 }

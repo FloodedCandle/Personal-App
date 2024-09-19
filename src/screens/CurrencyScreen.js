@@ -6,7 +6,7 @@ import { Picker } from '@react-native-picker/picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 
-const API_KEY = 'fca_live_i1ilCHFINItgdeCu1vLi0YTl5NK1HMHNYhOgPxNV'; // Replace with your actual API key
+const API_KEY = 'fca_live_i1ilCHFINItgdeCu1vLi0YTl5NK1HMHNYhOgPxNV';
 const API_URL = `https://api.freecurrencyapi.com/v1/latest?apikey=${API_KEY}`;
 
 const CurrencyScreen = () => {

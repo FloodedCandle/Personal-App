@@ -47,7 +47,6 @@ const EditBudgetScreen = ({ route, navigation }) => {
 
                     await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
 
-                    // Update local storage
                     await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
                     dispatch(updateBudget(updatedBudget));
                 }

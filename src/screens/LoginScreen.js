@@ -45,10 +45,8 @@ const LoginScreen = ({ navigation, route }) => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Clear any existing data
       await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
 
-      // Set user in Redux
       dispatch(setUser({
         uid: user.uid,
         email: user.email,
@@ -65,7 +63,6 @@ const LoginScreen = ({ navigation, route }) => {
 
       await AsyncStorage.setItem('offlineMode', 'false');
 
-      // Load user data
       await loadUserData(user.uid);
 
       if (isSwitch) {
@@ -74,7 +71,6 @@ const LoginScreen = ({ navigation, route }) => {
           routes: [{ name: 'MainApp' }],
         });
       } else {
-        // Navigate to MainApp, which should show the HomeScreen
         navigation.replace('MainApp');
       }
     } catch (error) {

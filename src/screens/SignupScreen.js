@@ -25,23 +25,23 @@ const SignupScreen = ({ navigation }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Update the user's profile with the username
+
       await updateProfile(user, { displayName: username });
 
-      // Initialize user data in Firestore
+
       await setDoc(doc(db, 'users', user.uid), {
         username: username,
         email: email,
         createdAt: new Date()
       });
 
-      // Initialize empty collections for the new user
+
       await setDoc(doc(db, 'userBudgets', user.uid), { budgets: [] });
       await setDoc(doc(db, 'transactions', user.uid), { transactions: [] });
       await setDoc(doc(db, 'notifications', user.uid), { notifications: [] });
       await setDoc(doc(db, 'userPreferences', user.uid), { chartTheme: 'default' });
 
-      // Set user in Redux
+
       dispatch(setUser({
         uid: user.uid,
         email: user.email,
@@ -50,10 +50,10 @@ const SignupScreen = ({ navigation }) => {
         emailVerified: user.emailVerified,
       }));
 
-      // Switch to online mode
+
       await AsyncStorage.setItem('offlineMode', 'false');
 
-      // Clear any existing local data
+
       await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
 
       console.log('User signed up:', user);

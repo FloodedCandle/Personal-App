@@ -17,10 +17,8 @@ export const processSyncQueue = async () => {
         if (queue) {
             const syncQueue = JSON.parse(queue);
             for (const action of syncQueue) {
-                // Process each action (e.g., sync with Firestore)
                 await syncActionWithFirestore(action);
             }
-            // Clear the queue after processing
             await AsyncStorage.removeItem('syncQueue');
         }
     } catch (error) {
@@ -29,6 +27,4 @@ export const processSyncQueue = async () => {
 };
 
 const syncActionWithFirestore = async (action) => {
-    // Implement the logic to sync each action type with Firestore
-    // This will depend on your specific data structure and requirements
 };

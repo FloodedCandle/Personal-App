@@ -77,20 +77,20 @@ const CreateBudgetScreen = ({ navigation }) => {
                         budgets: arrayUnion(newBudget)
                     });
                 } else {
-                    // If the document doesn't exist, create it with the new budget
+
                     await setDoc(userBudgetsRef, {
                         budgets: [newBudget]
                     });
                 }
 
-                // Update local storage for online mode as well
+
                 const storedBudgets = await AsyncStorage.getItem('budgets');
                 let updatedBudgets = storedBudgets ? JSON.parse(storedBudgets) : [];
                 updatedBudgets.push(newBudget);
                 await AsyncStorage.setItem('budgets', JSON.stringify(updatedBudgets));
             }
 
-            // Update Redux store
+
             dispatch(addBudget(newBudget));
 
             Alert.alert('Success', 'Budget created successfully');

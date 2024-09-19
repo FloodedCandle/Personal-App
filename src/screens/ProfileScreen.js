@@ -45,7 +45,6 @@ const ProfileScreen = ({ navigation }) => {
         setUser(JSON.parse(offlineUser));
         setEditedUsername(JSON.parse(offlineUser).username);
       } else {
-        // If no offline user exists, create a default one
         const defaultUser = { username: 'Offline User', createdAt: new Date().toISOString() };
         await AsyncStorage.setItem('offlineUser', JSON.stringify(defaultUser));
         setUser(defaultUser);
@@ -102,7 +101,7 @@ const ProfileScreen = ({ navigation }) => {
             try {
               await logout();
               dispatch(clearUser());
-              await clearUserData(); // Clear user data
+              await clearUserData();
               navigation.reset({
                 index: 0,
                 routes: [{ name: 'GetStarted' }],

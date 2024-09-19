@@ -13,7 +13,6 @@ const OfflineOptionScreen = ({ navigation }) => {
 
     const handleOfflineMode = async () => {
         await AsyncStorage.setItem('offlineMode', 'true');
-        // Clear online data
         await AsyncStorage.multiRemove(['budgets', 'transactions', 'notifications']);
         navigation.navigate('MainApp', { screen: 'MainHome', params: { offlineMode: true } });
     };

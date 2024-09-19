@@ -6,7 +6,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch, useSelector } from 'react-redux';
 import { setBudgets } from '../redux/budgetSlice';
-import { useRoute } from '@react-navigation/native';
 import { doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { db, auth } from '../config/firebaseConfig';
 import { addTransaction } from '../redux/transactionSlice';
@@ -98,13 +97,12 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                     await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
                 }
 
-                // Add transaction
                 const newTransaction = {
                     id: Date.now().toString(),
                     budgetId: budget.id,
                     budgetName: budget.name,
                     amount: fundAmount,
-                    date: new Date().toISOString(), // Use ISO string instead of Timestamp
+                    date: new Date().toISOString(),
                     type: 'expense'
                 };
 
@@ -113,19 +111,18 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                     await updateDoc(transactionsRef, {
                         transactions: arrayUnion({
                             ...newTransaction,
-                            date: new Date() // Use Date object for Firestore
+                            date: new Date()
                         })
                     });
                 }
 
-                // Update local storage and Redux
+
                 const storedTransactions = await AsyncStorage.getItem('transactions');
                 const transactions = storedTransactions ? JSON.parse(storedTransactions) : [];
                 transactions.push(newTransaction);
                 await AsyncStorage.setItem('transactions', JSON.stringify(transactions));
                 dispatch(addTransaction(newTransaction));
 
-                // Update local storage for budgets
                 const storedBudgets = await AsyncStorage.getItem('budgets');
                 if (storedBudgets) {
                     const budgets = JSON.parse(storedBudgets);
@@ -146,7 +143,6 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                 // Update Redux store
                 dispatch(setBudgets(updatedActiveBudgets));
 
-                // Show completion message
                 Alert.alert(
                     "Budget Completed",
                     `Congratulations! You've reached your goal for "${budget.name}".`,
@@ -155,7 +151,6 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                     ]
                 );
             } else {
-                // Update local state
                 setBudget(updatedBudget);
                 dispatch(setBudgets([updatedBudget]));
             }
@@ -185,13 +180,12 @@ const BudgetDetailScreen = ({ navigation, route }) => {
             await AsyncStorage.setItem(storageKey, JSON.stringify(notifications));
 
             if (!isOfflineMode) {
-                // Add to Firestore if online
                 const userId = auth.currentUser.uid;
                 const notificationsRef = doc(db, 'notifications', userId);
                 await updateDoc(notificationsRef, {
                     notifications: arrayUnion({
                         ...newNotification,
-                        createdAt: new Date() // This will be stored as a Firestore Timestamp
+                        createdAt: new Date()
                     })
                 });
             }
@@ -235,7 +229,6 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                                     await updateDoc(userBudgetsRef, { budgets: updatedBudgets });
                                 }
 
-                                // Update local storage
                                 const storedBudgets = await AsyncStorage.getItem('budgets');
                                 if (storedBudgets) {
                                     const budgets = JSON.parse(storedBudgets);
@@ -244,8 +237,7 @@ const BudgetDetailScreen = ({ navigation, route }) => {
                                 }
                             }
 
-                            // Update Redux store
-                            dispatch(setBudgets([])); // Clear the current budget in Redux
+                            dispatch(setBudgets([]));
 
                             Alert.alert('Success', 'Budget deleted successfully');
                             navigation.goBack();
